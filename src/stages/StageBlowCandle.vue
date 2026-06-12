@@ -25,7 +25,7 @@ onMounted(async () => {
 
   scene = new CandleScene()
   const w = window.innerWidth, h = window.innerHeight
-  scene.init(getTex('room-bright'), w, h)
+  scene.init(getTex('room-bright'), getTex('fire-particle'), w, h)
 
   scene.onBlown = () => setTimeout(() => nextStage(), 2500)
   scene.onMicDenied = () => { showFallbackBtn.value = true; setMicStatus('denied') }

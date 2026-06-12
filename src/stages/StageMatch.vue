@@ -80,6 +80,7 @@ function setFirefliesInteractive(active: boolean) {
 function closeCard() {
   activeCard.value = null
   setFirefliesInteractive(true)
+  scene?.onCardClosed()
 }
 </script>
 

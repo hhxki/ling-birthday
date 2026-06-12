@@ -58,17 +58,17 @@ export class MatchScene extends Container {
     this.sortableChildren = true
     this.particleTexture = particleTex
 
-    // 亮室（最底层）
-    this.roomBright = new Sprite(brightTex)
-    this.roomBright.zIndex = 0
-    this.roomBright.alpha = 0
-    this.addChild(this.roomBright)
-
-    // 暗室
+    // 暗室（底层）
     this.roomDark = new Sprite(darkTex)
-    this.roomDark.zIndex = 1
+    this.roomDark.zIndex = 0
     this.roomDark.alpha = 0
     this.addChild(this.roomDark)
+
+    // 亮室（上层，通过 alpha 控制渐显）
+    this.roomBright = new Sprite(brightTex)
+    this.roomBright.zIndex = 1
+    this.roomBright.alpha = 0
+    this.addChild(this.roomBright)
 
     // 火柴背景（最上层，初始可见）
     this.matchBg = new Sprite(matchBgTex)
@@ -151,6 +151,7 @@ export class MatchScene extends Container {
     this.isDragging = false
     this.phase2 = false
     this.completed = false
+    this.brightStep = 0
 
     const canvas = gameApp.app.canvas
     canvas.addEventListener('pointerdown', this._onDomDown!)
@@ -295,25 +296,25 @@ export class MatchScene extends Container {
       this.addChild(p)
 
       // 爆开飞出
+      const dur1 = 0.5 + Math.random() * 0.5
       gsap.to(p, {
         x: tx, y: ty,
-        duration: 0.5 + Math.random() * 0.5,
+        duration: dur1,
         ease: 'power3.out',
-      })
-      // 再飘到稳定位置开始浮动
-      ;(p as any)._settled = false
-
-      gsap.to(p, {
-        x: settleX, y: settleY,
-        duration: 1 + Math.random() * 1.5,
-        delay: 0.5 + Math.random() * 0.3,
-        ease: 'power1.inOut',
         onComplete: () => {
-          p.data.baseX = settleX
-          p.data.baseY = settleY
-          ;(p as any)._settled = true
+          gsap.to(p, {
+            x: settleX, y: settleY,
+            duration: 1 + Math.random() * 1.5,
+            ease: 'power1.inOut',
+            onComplete: () => {
+              p.data.baseX = settleX
+              p.data.baseY = settleY
+              ;(p as any)._settled = true
+            },
+          })
         },
       })
+      ;(p as any)._settled = false
 
       p.on('pointerdown', () => this.collectFirefly(p))
       this.fireflies.push(p)
@@ -340,7 +341,28 @@ export class MatchScene extends Container {
       if (idx !== -1) this.fireflies.splice(idx, 1)
       if (particle.parent) particle.parent.removeChild(particle)
       particle.destroy()
+      // 背景渐变延迟到卡片关闭时触发
       if (this.shownBlessings.size >= totalBlessings) this.allDone()
+    })
+  }
+
+  private brightStep = 0 // 0/1/2/3
+
+  /** 收集进度 → 房间暗渐隐 / 房间亮渐显（3段，每段有过移动画） */
+  private updateRoomBright(): void {
+    const progress = this.shownBlessings.size / totalBlessings
+    let newStep = 0
+    if (progress > 2 / 3) newStep = 3
+    else if (progress > 1 / 3) newStep = 2
+    else if (progress > 0) newStep = 1
+
+    if (newStep <= this.brightStep) return
+    this.brightStep = newStep
+
+    const target = newStep === 3 ? 1.0 : newStep === 2 ? 0.75 : 0.5
+
+    gsap.to(this.roomBright, {
+      alpha: target, duration: 1.2, ease: 'power2.inOut',
     })
   }
 
@@ -355,10 +377,9 @@ export class MatchScene extends Container {
     this.completed = true
     this.fireflies.forEach((ff) => { ff.eventMode = 'none'; ff.cursor = 'inherit' })
 
-    // 房间暗 → 房间亮
-    gsap.to(this.roomDark, { alpha: 0, duration: 1.2, ease: 'power2.inOut' })
+    // 最终过渡：房间亮 100%
     gsap.to(this.roomBright, {
-      alpha: 1, duration: 1.2, ease: 'power2.inOut',
+      alpha: 1, duration: 1, ease: 'power2.inOut',
       onComplete: () => {
         gsap.delayedCall(0.8, () => this.onAllCollected?.())
       },
@@ -366,6 +387,11 @@ export class MatchScene extends Container {
   }
 
   // ============ 萤火虫交互开关 ============
+
+  /** 卡片关闭时触发 → 背景渐变 */
+  onCardClosed(): void {
+    this.updateRoomBright()
+  }
 
   setInteractive(active: boolean): void {
     this.fireflies.forEach((ff) => {

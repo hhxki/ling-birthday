@@ -37,6 +37,12 @@ export const blessingsData: Blessing[] = [
     text: 'Ling生日快乐呀！虽然我只是直播间里一个小小的观众，但你的每次直播都能让我在疲惫的一天后露出笑容。谢谢你，要一直幸福下去！',
     styleType: 'cherry-blossom',
   },
+  {
+    id: 'wish_006',
+    from: '无名的小粉丝',
+    text: 'Ling生日快乐呀！虽然我只是直播间里一个小小的观众，但你的每次直播都能让我在疲惫的一天后露出笑容。谢谢你，要一直幸福下去！',
+    styleType: 'cherry-blossom',
+  },
 ]
 
 /** 祝福总数 */

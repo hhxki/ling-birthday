@@ -104,9 +104,9 @@ export const PARTICLE_CONFIG = {
 /** 吹蜡烛配置 */
 export const BLOW_CONFIG = {
   /** 分贝阈值 (RMS, 0~1)，越小越灵敏 */
-  dbThreshold: 0.12,
+  dbThreshold: 0.06,
   /** 持续超过阈值的时间 (ms) */
-  sustainDuration: 250,
+  sustainDuration: 150,
   /** 麦克风超时 (ms) — 超过则显示降级按钮 */
   micTimeout: 3000,
 }
