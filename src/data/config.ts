@@ -43,7 +43,6 @@ export const CRITICAL_ASSETS = [
   { alias: 'glow-particle', src: asset('/assets/glow-particle.svg') },
   { alias: 'room-dark', src: asset('/assets/房间暗.png') },
   { alias: 'room-bright', src: asset('/assets/房间亮.png') },
-  { alias: 'cake', src: asset('/assets/cake.svg') },
 ]
 
 /** 火柴交互配置 */

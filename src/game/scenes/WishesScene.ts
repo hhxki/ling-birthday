@@ -1,16 +1,17 @@
 // ============================================================
 // WishesScene — Stage 2: 汇聚心意
+// 背景：房间暗 → 收集完 → 渐变为房间亮
 // ============================================================
 import { Container, Sprite, Texture } from 'pixi.js'
+import gsap from 'gsap'
 import { FireParticle } from '../objects/FireParticle'
-import { Candle } from '../objects/Candle'
 import { PARTICLE_CONFIG } from '../../data/config'
 import { blessingsData, totalBlessings } from '../../data/blessings'
 import type { FireflyState } from '../../types'
 
 export class WishesScene extends Container {
-  roomBg: Sprite
-  candle!: Candle
+  private roomDark: Sprite
+  private roomBright: Sprite
   private particleTexture!: Texture
   private fireflies: FireParticle[] = []
   private shownBlessings = new Set<string>()
@@ -18,6 +19,7 @@ export class WishesScene extends Container {
   private sceneH = 1080
   private completed = false
   private idCounter = 0
+  private collectedCount = 0
 
   onParticleCollected?: (blessingId: string) => void
   onAllCollected?: () => void
@@ -25,35 +27,39 @@ export class WishesScene extends Container {
   constructor() {
     super()
     this.sortableChildren = true
-    this.roomBg = new Sprite(Texture.WHITE)
-    this.roomBg.zIndex = 0
-    this.addChild(this.roomBg)
+
+    this.roomBright = new Sprite(Texture.WHITE)
+    this.roomBright.zIndex = 0
+    this.roomBright.alpha = 0
+    this.addChild(this.roomBright)
+
+    this.roomDark = new Sprite(Texture.WHITE)
+    this.roomDark.zIndex = 1
+    this.addChild(this.roomDark)
   }
 
-  init(roomTex: Texture, cakeTexture: Texture, particleTex: Texture, w: number, h: number): void {
+  init(roomDarkTex: Texture, roomBrightTex: Texture, particleTex: Texture, w: number, h: number): void {
     this.sceneW = w
     this.sceneH = h
 
-    // 背景居中 cover
-    this.roomBg.texture = roomTex
-    this.roomBg.anchor.set(0.5)
-    this.roomBg.x = this.sceneW / 2
-    this.roomBg.y = this.sceneH / 2
-    const texW = roomTex.width || this.sceneW
-    const texH = roomTex.height || this.sceneH
-    this.roomBg.scale.set(Math.max(this.sceneW / texW, this.sceneH / texH))
-
-    // 蛋糕
-    this.candle = new Candle(cakeTexture)
-    this.candle.zIndex = 1
-    this.candle.x = this.sceneW / 2
-    this.candle.y = this.sceneH * 0.65
-    this.addChild(this.candle)
+    const cover = (sprite: Sprite, tex: Texture) => {
+      sprite.texture = tex
+      sprite.anchor.set(0.5)
+      sprite.x = w / 2
+      sprite.y = h / 2
+      const tw = tex.width || w, th = tex.height || h
+      sprite.scale.set(Math.max(w / tw, h / th))
+    }
+    cover(this.roomBright, roomBrightTex)
+    cover(this.roomDark, roomDarkTex)
+    this.roomDark.alpha = 1
+    this.roomBright.alpha = 0
 
     this.fireflies = []
     this.shownBlessings.clear()
     this.completed = false
     this.idCounter = 0
+    this.collectedCount = 0
     this.particleTexture = particleTex
   }
 
@@ -72,6 +78,7 @@ export class WishesScene extends Container {
       collected: false, blessingId: '',
     }
     const p = new FireParticle(this.particleTexture, state)
+    p.zIndex = 2
     p.on('pointerdown', () => this.collect(p))
     this.addChild(p)
     this.fireflies.push(p)
@@ -85,10 +92,12 @@ export class WishesScene extends Container {
 
     particle.data.blessingId = blessingId
     this.shownBlessings.add(blessingId)
+    this.collectedCount++
 
-    const pos = this.candle.getGlobalPosition()
-    particle.collectTo(pos.x, pos.y).then(() => {
-      this.candle.addLight(1 / totalBlessings)
+    // 萤火虫飞向屏幕中央偏下（蛋糕位置在背景图里）
+    const targetX = this.sceneW / 2
+    const targetY = this.sceneH * 0.65
+    particle.collectTo(targetX, targetY).then(() => {
       this.onParticleCollected?.(blessingId)
       const idx = this.fireflies.indexOf(particle)
       if (idx !== -1) this.fireflies.splice(idx, 1)
@@ -108,9 +117,15 @@ export class WishesScene extends Container {
   private done(): void {
     if (this.completed) return
     this.completed = true
+
     this.fireflies.forEach((ff) => { ff.eventMode = 'none'; ff.cursor = 'inherit' })
-    this.candle.igniteFull()
-    this.onAllCollected?.()
+
+    // 暗室 → 亮室
+    gsap.to(this.roomDark, { alpha: 0, duration: 1.2, ease: 'power2.inOut' })
+    gsap.to(this.roomBright, {
+      alpha: 1, duration: 1.2, ease: 'power2.inOut',
+      onComplete: () => gsap.delayedCall(0.8, () => this.onAllCollected?.()),
+    })
   }
 
   setInteractive(active: boolean): void {
@@ -127,16 +142,20 @@ export class WishesScene extends Container {
   onResize(w: number, h: number): void {
     this.sceneW = w
     this.sceneH = h
-    const texW = this.roomBg.texture.width || w
-    const texH = this.roomBg.texture.height || h
-    this.roomBg.scale.set(Math.max(w / texW, h / texH))
-    this.roomBg.x = w / 2
-    this.roomBg.y = h / 2
-    this.candle.x = w / 2
-    this.candle.y = h * 0.65
+    const reCover = (sprite: Sprite) => {
+      const tex = sprite.texture
+      if (!tex || tex === Texture.WHITE) return
+      sprite.x = w / 2; sprite.y = h / 2
+      const tw = tex.width || w, th = tex.height || h
+      sprite.scale.set(Math.max(w / tw, h / th))
+    }
+    reCover(this.roomDark)
+    reCover(this.roomBright)
   }
 
   destroyScene(): void {
+    gsap.killTweensOf(this.roomDark)
+    gsap.killTweensOf(this.roomBright)
     this.fireflies = []
     this.destroy({ children: true })
   }

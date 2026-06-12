@@ -25,13 +25,13 @@ onMounted(async () => {
   if (canvasContainer.value) gameApp.mount(canvasContainer.value)
   setTotalWishes(totalBlessings)
 
-  const roomTex = getTex('room-bright')
-  const cakeTex = getTex('cake')
+  const roomDarkTex = getTex('room-dark')
+  const roomBrightTex = getTex('room-bright')
   const particleTex = getTex('fire-particle')
 
   scene = new WishesScene()
-  const { width, height } = gameApp.size
-  scene.init(roomTex, cakeTex, particleTex, width, height)
+  const w = window.innerWidth, h = window.innerHeight
+  scene.init(roomDarkTex, roomBrightTex, particleTex, w, h)
 
   scene.onParticleCollected = (blessingId: string) => {
     const blessing = blessingsData.find((b) => b.id === blessingId)

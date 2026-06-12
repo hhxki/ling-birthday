@@ -24,8 +24,8 @@ onMounted(async () => {
   if (canvasContainer.value) gameApp.mount(canvasContainer.value)
 
   scene = new CandleScene()
-  const { width, height } = gameApp.size
-  scene.init(getTex('room-bright'), getTex('cake'), width, height)
+  const w = window.innerWidth, h = window.innerHeight
+  scene.init(getTex('room-bright'), w, h)
 
   scene.onBlown = () => setTimeout(() => nextStage(), 2500)
   scene.onMicDenied = () => { showFallbackBtn.value = true; setMicStatus('denied') }
