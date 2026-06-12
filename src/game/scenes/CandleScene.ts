@@ -5,6 +5,7 @@ import { Container, Sprite, Texture } from 'pixi.js'
 import gsap from 'gsap'
 import { AudioAnalyzer } from '../utils/audioAnalyzer'
 import { FireParticle } from '../objects/FireParticle'
+import { PARTICLE_CONFIG } from '../../data/config'
 import type { FireflyState } from '../../types'
 
 export class CandleScene extends Container {
@@ -54,8 +55,8 @@ export class CandleScene extends Container {
     if (this.blown) return
     this.blown = true
 
-    const cx = this.sceneW / 2
-    const cy = this.sceneH * 0.55
+    const cx = this.sceneW * PARTICLE_CONFIG.candleX
+    const cy = this.sceneH * PARTICLE_CONFIG.candleY
     for (let i = 0; i < 50; i++) {
       const angle = Math.random() * Math.PI * 2
       const dist = 250 + Math.random() * 500
@@ -78,7 +79,7 @@ export class CandleScene extends Container {
         y: cy + Math.sin(angle) * dist,
         alpha: 0,
         duration: 1.5 + Math.random() * 1.5,
-        ease: 'power2.out',
+        ease: 'power3.out',
         onComplete: () => {
           if (p.parent) p.parent.removeChild(p)
           p.destroy()

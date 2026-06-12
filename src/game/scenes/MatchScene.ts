@@ -201,7 +201,7 @@ export class MatchScene extends Container {
     if (!this.ignited) {
       gsap.to(this.match, {
         x: this.matchHome.x, y: this.matchHome.y,
-        rotation: MATCH_CONFIG.matchRotation, duration: 0.5, ease: 'power2.out',
+        rotation: MATCH_CONFIG.matchRotation, duration: 0.5, ease: 'power3.out',
       })
     }
   }
@@ -244,14 +244,21 @@ export class MatchScene extends Container {
     // 1. 先隐藏火柴盒
     gsap.to(this.matchbox, { alpha: 0, duration: 0.4 })
 
-    // 2. 火柴 + 火焰居中
-    const cx = this.sceneW / 2
-    const cy = this.sceneH * 0.5
+    // 2. 火柴居中 + 背景切换同时进行
+    const body = this.match.body
+    const anchorX = 0.3, anchorY = 0.9
+    const visualCenterOffsetX = (0.5 - anchorX) * body.width * body.scale.x
+    const visualCenterOffsetY = (0.5 - anchorY) * body.height * body.scale.y
+    const cx = this.sceneW / 2 - visualCenterOffsetX
+    const cy = this.sceneH * 0.5 - visualCenterOffsetY
     gsap.to(this.match, {
-      x: cx, y: cy, duration: 0.8, delay: 0.5, ease: 'power2.inOut',
+      x: cx, y: cy, duration: 0.8, delay: 0.5, ease: 'power3.inOut',
       onUpdate: () => this.updateFlamePosition(),
       onComplete: () => this.burstAndSpawn(),
     })
+    // 背景交叉渐变：从居中开始，覆盖到粒子爆开+沉降结束
+    gsap.to(this.matchBg, { alpha: 0, duration: 3.5, ease: 'power4.inOut' })
+    gsap.to(this.roomDark, { alpha: 1, duration: 3.5, ease: 'power4.inOut' })
   }
 
   private burstAndSpawn(): void {
@@ -267,10 +274,6 @@ export class MatchScene extends Container {
 
     // 火柴隐藏
     gsap.to(this.match, { alpha: 0, duration: 0.3 })
-
-    // 火柴背景 → 房间暗
-    gsap.to(this.matchBg, { alpha: 0, duration: 1.2, ease: 'power2.inOut' })
-    gsap.to(this.roomDark, { alpha: 1, duration: 1.2, ease: 'power2.inOut' })
 
     // 从火焰位置爆出粒子
     const count = PARTICLE_CONFIG.fireflyCount
@@ -305,7 +308,7 @@ export class MatchScene extends Container {
           gsap.to(p, {
             x: settleX, y: settleY,
             duration: 1 + Math.random() * 1.5,
-            ease: 'power1.inOut',
+            ease: 'power3.inOut',
             onComplete: () => {
               p.data.baseX = settleX
               p.data.baseY = settleY
@@ -333,8 +336,8 @@ export class MatchScene extends Container {
     particle.data.blessingId = blessingId
     this.shownBlessings.add(blessingId)
 
-    const tx = this.sceneW / 2
-    const ty = this.sceneH * 0.65
+    const tx = this.sceneW * PARTICLE_CONFIG.candleX
+    const ty = this.sceneH * PARTICLE_CONFIG.candleY
     particle.collectTo(tx, ty).then(() => {
       this.onParticleCollected?.(blessingId)
       const idx = this.fireflies.indexOf(particle)
@@ -362,7 +365,7 @@ export class MatchScene extends Container {
     const target = newStep === 3 ? 1.0 : newStep === 2 ? 0.75 : 0.5
 
     gsap.to(this.roomBright, {
-      alpha: target, duration: 1.2, ease: 'power2.inOut',
+      alpha: target, duration: 1.2, ease: 'power3.inOut',
     })
   }
 
@@ -379,7 +382,7 @@ export class MatchScene extends Container {
 
     // 最终过渡：房间亮 100%
     gsap.to(this.roomBright, {
-      alpha: 1, duration: 1, ease: 'power2.inOut',
+      alpha: 1, duration: 1, ease: 'power3.inOut',
       onComplete: () => {
         gsap.delayedCall(0.8, () => this.onAllCollected?.())
       },

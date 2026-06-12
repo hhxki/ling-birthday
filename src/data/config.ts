@@ -99,6 +99,10 @@ export const PARTICLE_CONFIG = {
   floatAmplitude: 50,
   /** 收集飞行时长 (秒) */
   collectDuration: 1.0,
+  /** 蜡烛/收集目标水平位置 (屏幕宽度比例, 0=左 1=右) */
+  candleX: 0.5,
+  /** 蜡烛/收集目标垂直位置 (屏幕高度比例, 0=顶 1=底) */
+  candleY: 0.65,
 }
 
 /** 吹蜡烛配置 */
