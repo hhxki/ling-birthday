@@ -43,6 +43,8 @@ export const CRITICAL_ASSETS = [
   { alias: 'glow-particle', src: asset('/assets/particle-smoke.png') },
   { alias: 'room-dark', src: asset('/assets/房间暗.png') },
   { alias: 'room-bright', src: asset('/assets/房间亮.png') },
+  { alias: 'card-bg', src: asset('/assets/贺卡.png') },
+  { alias: 'card-mascot', src: asset('/assets/贺卡小人.png') },
 ]
 
 /** 火柴交互配置 */
@@ -105,7 +107,19 @@ export const PARTICLE_CONFIG = {
   candleY: 0.65,
 }
 
-/** 吹蜡烛配置 */
+/** 贺卡三宫格 + 排版配置 */
+export const CARD_CONFIG = {
+  /** 贺卡信封图（三宫格背景） */
+  cardBgUrl: asset('/assets/贺卡.png'),
+  /** 贺卡小人图 URL */
+  mascotUrl: asset('/assets/贺卡小人.png'),
+  /** 图片原始尺寸 */
+  imageWidth: 1657,
+  imageHeight: 1117,
+  /** 上/下裁切（图片像素，不拉伸） */
+  topSlice: 200,
+  bottomSlice: 200,
+}
 export const BLOW_CONFIG = {
   /** 分贝阈值 (RMS, 0~1)，越小越灵敏 */
   dbThreshold: 0.06,

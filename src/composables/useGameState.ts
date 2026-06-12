@@ -18,7 +18,6 @@ const state = reactive<GameState>({
 const STAGE_ORDER: GameStage[] = [
   'match',
   'blow-candle',
-  'timeline',
   'ending',
 ]
 
