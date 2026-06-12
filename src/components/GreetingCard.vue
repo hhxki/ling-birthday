@@ -43,31 +43,45 @@ const frameStyle = computed(() => ({
 
 <template>
   <Transition name="card">
-    <div class="card-overlay">
-      <div class="card-stage">
-        <div class="letter-body" :style="{ ...frameStyle, '--lw': '680px' }">
-          <div class="letter-content">
-            <div class="avatar-row">
-              <div class="avatar-circle">
-                <div class="avatar-bow">🎀</div>
-                <span class="avatar-cat">🐱</span>
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] backdrop-blur-sm">
+      <div class="relative w-[780px] h-[520px]">
+        <div
+          class="absolute left-[60px] top-[30px] w-[560px] min-h-[200px] z-10 box-border"
+          :style="{ ...frameStyle, '--lw': '680px' }"
+        >
+          <div class="py-4 pr-[130px] pl-11">
+            <div class="flex items-center gap-[14px] mb-2">
+              <div class="w-14 h-14 rounded-full border-[3px] border-[#ffccd8] bg-[#fff0f3] flex items-center justify-center relative shrink-0 shadow-[inset_0_2px_4px_rgba(255,123,159,0.1)]">
+                <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-[var(--color-ling-pink)] text-white text-[9px] py-px px-1.5 rounded-full whitespace-nowrap">🎀</div>
+                <span class="text-2xl opacity-[0.35]">🐱</span>
               </div>
-              <div class="sender-info">
-                <span class="sender-label">From</span>
-                <span class="sender-name">{{ blessing.from }}</span>
+              <div class="flex flex-col gap-0.5">
+                <span class="text-[10px] tracking-[0.15em] text-[var(--color-ling-pink)] uppercase">From</span>
+                <span class="text-base font-semibold text-[#334155]">{{ blessing.from }}</span>
               </div>
             </div>
-            <div class="card-divider" />
-            <p class="card-text">{{ blessing.text }}</p>
-            <button v-if="blessing.audioUrl" class="card-audio-btn" :class="{ playing: isPlaying }" @click="handlePlayVoice">
+            <div class="h-px mb-2.5 bg-[linear-gradient(to_right,rgba(255,123,159,0.3),transparent_75%)]" />
+            <p class="mb-3 text-[15px] leading-[1.7] text-[#475569] whitespace-pre-line">{{ blessing.text }}</p>
+            <button
+              v-if="blessing.audioUrl"
+              class="inline-flex items-center gap-1.5 py-[7px] px-[15px] rounded-[14px] border text-[13px] cursor-pointer transition-all duration-200 w-fit"
+              :class="isPlaying
+                ? 'border-[rgba(99,179,237,0.4)] bg-[rgba(99,179,237,0.15)] text-[var(--color-clear-blue)]'
+                : 'border-[rgba(255,123,159,0.3)] bg-[rgba(255,123,159,0.1)] text-[var(--color-ling-pink)] hover:bg-[rgba(255,123,159,0.2)]'"
+              @click="handlePlayVoice"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path v-if="!isPlaying" d="M8 5v14l11-7z" /><template v-else><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></template></svg>
               {{ isPlaying ? '停止' : '播放语音' }}
             </button>
           </div>
-          <button class="close-btn" @click="emit('close')" aria-label="关闭">✕</button>
         </div>
-        <div class="mascot">
-          <img :src="CARD_CONFIG.mascotUrl" alt="mascot" class="mascot-img" />
+        <button
+          class="absolute right-[215px] top-[70px] w-7 h-7 rounded-full bg-[var(--color-ling-pink)] text-white text-sm font-bold border-none cursor-pointer shadow-[0_2px_6px_rgba(255,123,159,0.3)] z-30 transition-colors duration-200 hover:bg-[#ff5c87]"
+          @click="emit('close')"
+          aria-label="关闭"
+        >✕</button>
+        <div class="absolute right-5 bottom-2.5 w-[280px] h-[430px] z-20 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]">
+          <img :src="CARD_CONFIG.mascotUrl" alt="mascot" class="w-full h-full object-contain" />
         </div>
       </div>
     </div>
@@ -75,60 +89,7 @@ const frameStyle = computed(() => ({
 </template>
 
 <style scoped>
-.card-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(8,12,24,0.45); backdrop-filter: blur(4px);
-}
-.card-stage { position: relative; width: 900px; height: 520px; }
-.letter-body {
-  position: absolute; left: 60px; top: 30px;
-  width: 680px; min-height: 200px; z-index: 10;
-  box-sizing: border-box;
-}
-.letter-content { padding: 16px 190px 16px 28px; }
-.avatar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
-.avatar-circle {
-  width: 56px; height: 56px; border-radius: 50%;
-  border: 3px solid #ffccd8; background: #fff0f3;
-  display: flex; align-items: center; justify-content: center;
-  position: relative; flex-shrink: 0;
-  box-shadow: inset 0 2px 4px rgba(255,123,159,0.1);
-}
-.avatar-bow {
-  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
-  background: #ff7b9f; color: #fff; font-size: 9px;
-  padding: 1px 6px; border-radius: 999px; white-space: nowrap;
-}
-.avatar-cat { font-size: 24px; opacity: 0.35; }
-.sender-info { display: flex; flex-direction: column; gap: 2px; }
-.sender-label { font-size: 10px; letter-spacing: 0.15em; color: #ff7b9f; text-transform: uppercase; }
-.sender-name { font-size: 16px; font-weight: 600; color: #334155; }
-.card-divider { height: 1px; margin-bottom: 10px; background: linear-gradient(to right, rgba(255,123,159,0.3), transparent 75%); }
-.card-text { margin: 0 0 12px; font-size: 15px; line-height: 1.7; color: #475569; white-space: pre-line; }
-.card-audio-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 15px; border-radius: 14px;
-  border: 1px solid rgba(255,123,159,0.3); background: rgba(255,123,159,0.1);
-  color: #ff7b9f; font-size: 13px; cursor: pointer; transition: all 0.2s; width: fit-content;
-}
-.card-audio-btn:hover { background: rgba(255,123,159,0.2); }
-.card-audio-btn.playing { border-color: rgba(99,179,237,0.4); background: rgba(99,179,237,0.15); color: #63b3ed; }
-.close-btn {
-  position: absolute; top: 14px; right: 18px;
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #ff7b9f; color: #fff; font-size: 14px; font-weight: bold;
-  border: none; cursor: pointer; box-shadow: 0 2px 6px rgba(255,123,159,0.3);
-  z-index: 20; transition: background 0.2s;
-}
-.close-btn:hover { background: #ff5c87; }
-.mascot {
-  position: absolute; right: 40px; bottom: 10px;
-  width: 280px; height: 430px; z-index: 20;
-  filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.3));
-}
-.mascot-img { width: 100%; height: 100%; object-fit: contain; }
-.card-enter-active { transition: all 0.45s cubic-bezier(0.34,1.56,0.64,1); }
+.card-enter-active { transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .card-leave-active { transition: all 0.2s ease-in; }
 .card-enter-from { opacity: 0; transform: scale(0.85); }
 .card-leave-to { opacity: 0; }
