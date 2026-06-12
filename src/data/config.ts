@@ -39,8 +39,8 @@ export const CRITICAL_ASSETS = [
   { alias: 'match-flame', src: asset('/assets/火柴火焰.png') },
   { alias: 'matchbox', src: asset('/assets/火柴盒.png') },
   { alias: 'match-bg', src: asset('/assets/火柴背景.png') },
-  { alias: 'fire-particle', src: asset('/assets/fire-particle.svg') },
-  { alias: 'glow-particle', src: asset('/assets/glow-particle.svg') },
+  { alias: 'fire-particle', src: asset('/assets/particle-smoke.png') },
+  { alias: 'glow-particle', src: asset('/assets/particle-smoke.png') },
   { alias: 'room-dark', src: asset('/assets/房间暗.png') },
   { alias: 'room-bright', src: asset('/assets/房间亮.png') },
 ]

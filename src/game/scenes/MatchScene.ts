@@ -1,7 +1,7 @@
 // ============================================================
 // MatchScene — 划火柴 + 汇聚心意（同一场景无缝衔接）
 // ============================================================
-import { Container, Sprite, Texture, Graphics, BlurFilter } from 'pixi.js'
+import { Container, Sprite, Texture, BlurFilter } from 'pixi.js'
 import gsap from 'gsap'
 import { Match } from '../objects/Match'
 import { FireParticle } from '../objects/FireParticle'
@@ -221,7 +221,7 @@ export class MatchScene extends Container {
     return headX > b.x && headX < b.x + b.width && headY > pTop && headY < b.y + b.height
   }
 
-  // ============ 点燃 → 粒子爆发 → 进入萤火虫阶段 ============
+  // ============ 点燃 → 火柴盒消失 → 居中 → 爆开 → 萤火虫 ============
 
   private fireIgnite(): void {
     if (this.ignited) return
@@ -236,77 +236,93 @@ export class MatchScene extends Container {
     this.flameBlur.alpha = 0.45
     this.flameBlur.scale.set(s * 1.2)
     gsap.to(this.flameBlur, { alpha: 0.25, duration: 0.5, yoyo: true, repeat: -1, ease: 'sine.inOut' })
+    this.updateFlamePosition()
 
     this.onIgnited?.()
-    this.burstParticles()
+
+    // 1. 先隐藏火柴盒
+    gsap.to(this.matchbox, { alpha: 0, duration: 0.4 })
+
+    // 2. 火柴 + 火焰居中
+    const cx = this.sceneW / 2
+    const cy = this.sceneH * 0.5
+    gsap.to(this.match, {
+      x: cx, y: cy, duration: 0.8, delay: 0.5, ease: 'power2.inOut',
+      onUpdate: () => this.updateFlamePosition(),
+      onComplete: () => this.burstAndSpawn(),
+    })
   }
 
-  private burstParticles(): void {
-    const cx = this.flame.x, cy = this.flame.y
-    for (let i = 0; i < 25; i++) {
-      const p = new Graphics()
-      p.circle(0, 0, 1.5 + Math.random() * 3.5)
-      p.fill({ color: 0xffb03a, alpha: 0.9 })
-      p.x = cx; p.y = cy; p.zIndex = 10
-      this.addChild(p)
+  private burstAndSpawn(): void {
+    const head = this.match.getHeadPosition()
+    const cx = this.match.x
+    const cy = head.y + MATCH_CONFIG.flameOffsetY
 
-      const angle = Math.random() * Math.PI * 2
-      const dist = 150 + Math.random() * 400
-      gsap.to(p, {
-        x: cx + Math.cos(angle) * dist,
-        y: cy + Math.sin(angle) * dist,
-        alpha: 0,
-        duration: 0.8 + Math.random() * 0.8,
-        ease: 'power2.out',
-        onComplete: () => { if (p.parent) p.parent.removeChild(p); p.destroy() },
-      })
-    }
+    // 火焰消失（先杀掉呼吸动画再 fade）
+    gsap.killTweensOf(this.flame)
+    gsap.killTweensOf(this.flameBlur)
+    gsap.to(this.flame, { alpha: 0, duration: 0.25 })
+    gsap.to(this.flameBlur, { alpha: 0, duration: 0.25 })
 
-    // 爆发后进入萤火虫阶段
-    gsap.delayedCall(1.5, () => this.startPhase2())
-  }
-
-  private startPhase2(): void {
-    this.phase2 = true
-
-    // 火焰消失
-    gsap.to(this.flame, { alpha: 0, duration: 0.4, overwrite: 'auto' })
-    gsap.to(this.flameBlur, { alpha: 0, duration: 0.4, overwrite: 'auto' })
+    // 火柴隐藏
+    gsap.to(this.match, { alpha: 0, duration: 0.3 })
 
     // 火柴背景 → 房间暗
     gsap.to(this.matchBg, { alpha: 0, duration: 1.2, ease: 'power2.inOut' })
     gsap.to(this.roomDark, { alpha: 1, duration: 1.2, ease: 'power2.inOut' })
 
-    // 火柴隐藏
-    gsap.to(this.match, { alpha: 0, duration: 0.5 })
+    // 从火焰位置爆出粒子
+    const count = PARTICLE_CONFIG.fireflyCount
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const dist = 250 + Math.random() * 450
+      const tx = cx + Math.cos(angle) * dist
+      const ty = cy + Math.sin(angle) * dist
+      const margin = 60
+      const settleX = margin + Math.random() * (this.sceneW - margin * 2)
+      const settleY = margin + Math.random() * (this.sceneH - margin * 2)
 
-    // 生成萤火虫
-    this.spawnFireflies()
-  }
+      const state: FireflyState = {
+        id: `ff_${++this.idCounter}`,
+        x: cx, y: cy,
+        baseX: settleX, baseY: settleY,
+        phase: Math.random() * Math.PI * 2,
+        collected: false,
+        blessingId: '',
+      }
+      const p = new FireParticle(this.particleTexture, state)
+      p.zIndex = 7
+      this.addChild(p)
 
-  // ============ 萤火虫阶段 ============
+      // 爆开飞出
+      gsap.to(p, {
+        x: tx, y: ty,
+        duration: 0.5 + Math.random() * 0.5,
+        ease: 'power3.out',
+      })
+      // 再飘到稳定位置开始浮动
+      ;(p as any)._settled = false
 
-  private spawnFireflies(): void {
-    for (let i = 0; i < PARTICLE_CONFIG.fireflyCount; i++) this.spawnOne()
-  }
+      gsap.to(p, {
+        x: settleX, y: settleY,
+        duration: 1 + Math.random() * 1.5,
+        delay: 0.5 + Math.random() * 0.3,
+        ease: 'power1.inOut',
+        onComplete: () => {
+          p.data.baseX = settleX
+          p.data.baseY = settleY
+          ;(p as any)._settled = true
+        },
+      })
 
-  private spawnOne(): FireParticle {
-    const margin = 60
-    const sx = margin + Math.random() * (this.sceneW - margin * 2)
-    const sy = margin + Math.random() * (this.sceneH - margin * 2)
-    const state: FireflyState = {
-      id: `ff_${++this.idCounter}`,
-      x: sx, y: sy, baseX: sx, baseY: sy,
-      phase: Math.random() * Math.PI * 2,
-      collected: false, blessingId: '',
+      p.on('pointerdown', () => this.collectFirefly(p))
+      this.fireflies.push(p)
     }
-    const p = new FireParticle(this.particleTexture, state)
-    p.zIndex = 7
-    p.on('pointerdown', () => this.collectFirefly(p))
-    this.addChild(p)
-    this.fireflies.push(p)
-    return p
+
+    this.phase2 = true
   }
+
+  // ============ 萤火虫收集 ============
 
   private collectFirefly(particle: FireParticle): void {
     if (particle.data.collected || this.completed) return
@@ -324,7 +340,6 @@ export class MatchScene extends Container {
       if (idx !== -1) this.fireflies.splice(idx, 1)
       if (particle.parent) particle.parent.removeChild(particle)
       particle.destroy()
-      this.spawnOne()
       if (this.shownBlessings.size >= totalBlessings) this.allDone()
     })
   }
@@ -360,7 +375,9 @@ export class MatchScene extends Container {
   }
 
   updateFireflies(delta: number): void {
-    for (const ff of this.fireflies) if (!ff.data.collected) ff.update(delta)
+    for (const ff of this.fireflies) {
+      if (!ff.data.collected && (ff as any)._settled) ff.update(delta)
+    }
   }
 
   // ============ Resize ============
