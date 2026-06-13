@@ -37,6 +37,7 @@ export const blessingsData: Blessing[] = [
     user: '边沐浴边鹿',
     text: '祝0宝生日快乐喔！作为直播间得新老人，也是陪0过了第一个生日！愿新的一岁，直播永远高能，人气永远爆棚！天天都能吃一灯仙丹！吃蛋糕吃到胀到了！跟所有的烦恼嗦拜拜，跟所有的快乐嗦嗨嗨！',
     avatarUrl: asset('/avatars/边沐浴边鹿.webp'),
+    videoUrl: asset('/video/边沐浴边鹿.mp4'),
   },
   {
     id: 'wish_006',
@@ -49,6 +50,40 @@ export const blessingsData: Blessing[] = [
     user: '是擽希晝吖',
     text: '伶宝，生日快乐⌯oᴗo⌯\n一首长诗，你在邮箱里看过了，就附赠一个短诗（哎嘿）\n\n由来蕙质本天成，\n川漾清光映月明。\n伶语嫣然春意暖，\n生辰花好伴川行。\n\n万物皆需成长，包括你的美好。\n岁月为名，情谊为证。\n愿你即使年年岁岁花相似，也要岁岁年年人不同——不同在于，更自信，更自由，更快乐。\n生日快乐，我们的朋友，伶宝',
     avatarUrl: asset('/avatars/是擽希晝吖.webp'),
+  },  
+  {
+    id: 'wish_008',
+    user: 'JunXi',
+    text: '时时笑颜开，处处好运来，祝伶宝在新的一年，岁岁平安，年年有余；福如东海，寿比南山；吉星高照，好运连连；平安喜乐，万事胜意。生日快乐，伶宝！',
+    avatarUrl: asset('/avatars/JunXi.png'),
+    audioUrl: asset('/audio/JunXi.m4a'),
+  }, 
+  {
+    id: 'wish_009',
+    user: '龟田瘪三郎',
+    text: '小伶生日快乐哦！俺也算是在小伶刚开播的时候就从直播间里刷出来的老资历野怪了，中间错失了一大段的陪伴时间，不过幸好能赶上今年的生日回。祝伶在新的一年事业腾飞，人气爆棚，舰长破万，身体健康，天天开心。',
+    avatarUrl: asset('/avatars/龟田瘪三郎.jpg'),
+  },
+  {
+    id: 'wish_010',
+    user: '刘文乐Venlo',
+    text: '今天是6月13日。祝伶酱生日快乐！因为TK音声让我们相遇，依旧在聆听，一直在陪伴。伶酱新的一岁到来之际也要笑口常开，开怀大笑。希望伶酱将来为我们带来更多的TK音声，也期待着有一天我能和伶酱合作。\n\nFrom B站虚拟主播 @刘文乐Venlo',
+    avatarUrl: asset('/avatars/刘文乐Venlo.webp'),
+    audioUrl: asset('/audio/刘文乐Venlo.m4a'),
+  },
+    {
+    id: 'wish_011',
+    user: '念倾雨天',
+    text: '在这里祝伶姐生日快乐！！！🍰遇见你真的很幸运，很高兴陪你长大一岁，也让我们看到了最真诚、善良且坚韧的你。祝你得偿所愿，希望接下来的日子像烟花一样灿烂，今天！明天！每一天！',
+    avatarUrl: asset('/avatars/念倾雨天.webp'),
+    audioUrl: asset('/audio/念倾雨天.mp3'),
+  },
+  {
+    id: 'wish_012',
+    user: '昨夜晨光zjx2',
+    text: '伶宝生日快乐',
+    avatarUrl: asset('/avatars/昨夜晨光zjx2.webp'),
+    audioUrl: asset('/audio/昨夜晨光zjx2.m4a'),
   },
 ]
 

@@ -18,6 +18,15 @@ const audioDuration = ref(0) // 预加载时拿到的总时长（秒）
 let currentVoice: ReturnType<typeof playVoice> | null = null
 let progressTimer: ReturnType<typeof setInterval> | null = null
 
+// ---- 视频 ----
+const videoAvailable = ref(false)
+const videoChecking = ref(true)
+const videoDuration = ref(0)
+const showVideoOverlay = ref(false)
+const videoRef = ref<HTMLVideoElement>()
+const videoRowRef = ref<HTMLDivElement>()
+const videoOverlayRef = ref<HTMLDivElement>()
+
 function fmtTime(s: number): string {
   const m = Math.floor(s / 60)
   const sec = Math.floor(s % 60)
@@ -55,6 +64,51 @@ function checkAudio(url: string): Promise<boolean> {
     audio.preload = 'metadata'
     audio.src = url
   })
+}
+
+function checkVideo(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    const timeout = setTimeout(() => { resolve(false); cleanup() }, 8000)
+    const cleanup = () => {
+      video.onloadedmetadata = null
+      video.onerror = null
+      video.src = ''
+      video.load()
+      video.remove()
+    }
+    video.onloadedmetadata = () => {
+      clearTimeout(timeout)
+      videoDuration.value = video.duration || 0
+      resolve(true)
+      cleanup()
+    }
+    video.onerror = () => { clearTimeout(timeout); resolve(false); cleanup() }
+    video.preload = 'metadata'
+    video.crossOrigin = 'anonymous'
+    video.src = url
+  })
+}
+
+function handlePlayVideo() {
+  showVideoOverlay.value = true
+  nextTick(() => {
+    const el = videoOverlayRef.value
+    const video = videoRef.value
+    if (!el || !video || !props.blessing.videoUrl) return
+    video.src = props.blessing.videoUrl
+    video.load()
+    gsap.fromTo(el, { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'power3.out' })
+    video.play()?.catch(() => {})
+  })
+}
+
+function handleCloseVideo() {
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.src = ''
+  }
+  showVideoOverlay.value = false
 }
 
 function handlePlayVoice() {
@@ -114,13 +168,24 @@ function showAudioRow(): void {
   })
 }
 
+/** 视频就绪 + 入场完成后，浮现视频播放条 */
+function showVideoRow(): void {
+  nextTick(() => {
+    if (videoRowRef.value) {
+      gsap.set(videoRowRef.value, { opacity: 0, y: 8 })
+      gsap.to(videoRowRef.value, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' })
+    }
+  })
+}
+
 onMounted(() => {
   // 入场动画立即开始，不等音频检查
   enterTl = gsap.timeline({
     defaults: { ease: 'power3.out' },
     onComplete: () => {
-      // 入场全部播完 → 如果音频已经就绪，延迟浮现
+      // 入场全部播完 → 如果音频/视频已经就绪，延迟浮现
       if (audioAvailable.value) showAudioRow()
+      if (videoAvailable.value) showVideoRow()
     },
   })
 
@@ -185,16 +250,30 @@ onMounted(() => {
   } else {
     audioChecking.value = false
   }
+  // 视频异步检查
+  if (props.blessing.videoUrl) {
+    checkVideo(props.blessing.videoUrl).then((ok) => {
+      videoAvailable.value = ok
+      videoChecking.value = false
+      if (ok && enterTl && !enterTl.isActive()) showVideoRow()
+    })
+  } else {
+    videoChecking.value = false
+  }
 })
 
 function handleClose() {
   if (isClosing.value || !enterTl) return
   isClosing.value = true
-  // 关闭前停止正在播放的语音
+  // 关闭前停止正在播放的语音 / 视频
   if (isPlaying.value) {
     currentVoice?.stop()
     stopProgress()
     isPlaying.value = false
+  }
+  if (showVideoOverlay.value) {
+    videoRef.value?.pause()
+    showVideoOverlay.value = false
   }
   gsap.to(overlayRef.value!, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => emit('close') })
   // 模糊同步淡出
@@ -212,6 +291,7 @@ function handleClose() {
 onBeforeUnmount(() => {
   stopProgress()
   enterTl?.kill()
+  videoRef.value?.pause()
 })
 </script>
 
@@ -275,6 +355,33 @@ onBeforeUnmount(() => {
                 <span class="text-xs font-mono text-[var(--color-ling-pink)] ml-2 font-semibold">{{ audioRemaining || (audioDuration > 0 ? fmtTime(audioDuration) : '0:00') }}</span>
               </div>
             </div>
+            <!-- 视频播放条 -->
+            <div
+              v-if="videoAvailable"
+              ref="videoRowRef"
+              class="flex items-center justify-between rounded-full py-2.5 px-4 border transition-colors duration-300 mt-3 opacity-0 bg-[#fff0f3] border-[#ffccd8]"
+            >
+              <div class="flex items-center gap-3">
+                <button
+                  class="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
+                  @click="handlePlayVideo"
+                >
+                  <svg class="h-5 w-5 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+                <span class="text-xs font-medium text-[#475569]">点击观看视频祝福</span>
+              </div>
+              <div class="flex items-center gap-2.5 h-6 select-none">
+                <div class="flex items-center gap-[2px] h-3.5">
+                  <span class="video-bar w-[3px] rounded-full bg-[var(--color-clear-blue)]" />
+                  <span class="video-bar w-[3px] rounded-full bg-[var(--color-ling-pink)]" style="animation-delay: 0.12s" />
+                  <span class="video-bar w-[3px] rounded-full bg-[var(--color-amber-gold)]" style="animation-delay: 0.24s" />
+                </div>
+                <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-ling-pink)]/10 text-[var(--color-ling-pink)] border border-[var(--color-ling-pink)]/20">720P</span>
+                <span class="text-xs font-mono text-[var(--color-ling-pink)] font-semibold">{{ fmtTime(videoDuration) }}</span>
+              </div>
+            </div>
           </div>
           <!-- mascot 锚定贺卡右下角，高度变化时自动跟随 -->
           <div ref="mascotRef" class="absolute left-[420px] bottom-[-163px] w-[280px] h-[430px] z-20 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] pointer-events-none">
@@ -291,6 +398,25 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </Transition>
+  <!-- 视频播放弹窗 -->
+  <Teleport to="body">
+    <div v-if="showVideoOverlay" class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+      <div ref="videoOverlayRef" class="relative pointer-events-auto">
+        <video
+          ref="videoRef"
+          controls
+          playsinline
+          preload="auto"
+          style="display: block; background: #000;"
+          @ended="handleCloseVideo"
+        />
+        <button
+          class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-[var(--color-ling-pink)] text-white text-sm font-bold border-none cursor-pointer shadow-[0_2px_6px_rgba(255,123,159,0.3)] hover:bg-[#ff5c87] transition-colors z-10"
+          @click="handleCloseVideo"
+        >✕</button>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -302,5 +428,15 @@ onBeforeUnmount(() => {
 @keyframes audioBounce {
   0%, 100% { height: 5px; }
   50% { height: 18px; }
+}
+
+/* ---- video bars ---- */
+.video-bar {
+  animation: videoBounce 0.8s ease-in-out infinite alternate;
+  height: 4px;
+}
+@keyframes videoBounce {
+  0% { height: 4px; }
+  100% { height: 14px; }
 }
 </style>

@@ -1,6 +1,6 @@
 <!-- StageMatch — 划火柴 + 汇聚心意（合并场景） -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Assets, Texture } from 'pixi.js'
 import { useGameState } from '../composables/useGameState'
 import { gameApp } from '../game/GameApp'
@@ -16,11 +16,7 @@ const canvasContainer = ref<HTMLDivElement>()
 
 let scene: MatchScene | null = null
 const activeCard = ref<Blessing | null>(null)
-
-// ===== 调试：首页直接展示 blessingsData[0] 方便调九宫格 =====
-const showDebugCard = ref(true)
-function closeDebugCard() { showDebugCard.value = false }
-const debugBlessing = computed(() => blessingsData[6]) // 是擽希晝吖
+const showCounter = ref(false)
 
 function getTex(alias: string): Texture {
   try {
@@ -50,8 +46,8 @@ onMounted(async () => {
   const w = window.innerWidth, h = window.innerHeight
   scene.init(w, h)
 
-  // 火柴点燃
-  scene.onIgnited = () => {}
+  // 火柴点燃 → 居中动画结束后显示计数器
+  scene.onIgnited = () => { setTimeout(() => { showCounter.value = true }, 1500) }
 
   // 萤火虫收集 → 弹贺卡
   scene.onParticleCollected = (blessingFrom: string) => {
@@ -91,16 +87,10 @@ function closeCard() {
 
 <template>
   <div ref="canvasContainer" class="fixed inset-0 z-5">
-    <div class="fixed top-6 right-6 z-60 flex items-center gap-2.5 px-4 py-2 rounded-2xl border border-[#ff7b9f]/20 bg-[#131a26]/70 backdrop-blur-xl">
-      <span class="text-xs tracking-wider text-white/50">心意收集</span>
+    <div v-if="showCounter" class="fixed top-6 right-6 z-60 flex items-center gap-2.5 px-4 py-2 rounded-2xl border border-[#ff7b9f]/20 bg-[#131a26]/70 backdrop-blur-xl">
+      <span class="text-xs tracking-wider text-white/50">汇聚心意</span>
       <span class="text-sm font-semibold text-[#ff7b9f]">{{ state.wishesCollected }} / {{ totalBlessings }}</span>
     </div>
     <GreetingCard v-if="activeCard" :blessing="activeCard" @close="closeCard" />
-    <!-- 调试：首页直接展示贺卡，方便调九宫格参数 -->
-    <GreetingCard
-      v-if="showDebugCard"
-      :blessing="debugBlessing"
-      @close="closeDebugCard"
-    />
   </div>
 </template>

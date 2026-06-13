@@ -127,3 +127,15 @@ export const BLOW_CONFIG = {
   /** 麦克风超时 (ms) — 超过则显示降级按钮 */
   micTimeout: 3000,
 }
+
+/** 音频全局配置 */
+export const AUDIO_CONFIG = {
+  /** 背景音乐音量 (0~1) */
+  bgmVolume: 0.3,
+  /** 音效音量 (0~1) */
+  sfxVolume: 0.5,
+  /** 语音音量 (0~1) */
+  voiceVolume: 0.7,
+  /** 全局静音: true = 静音，适合调试阶段快速关闭 */
+  muted: false,
+}

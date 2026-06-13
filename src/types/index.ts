@@ -18,6 +18,7 @@ export interface Blessing {
   text: string
   avatarUrl?: string
   audioUrl?: string
+  videoUrl?: string
 }
 
 /** 时光长廊条目 */
