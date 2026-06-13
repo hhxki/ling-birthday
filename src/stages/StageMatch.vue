@@ -20,7 +20,7 @@ const activeCard = ref<Blessing | null>(null)
 // ===== 调试：首页直接展示 blessingsData[0] 方便调九宫格 =====
 const showDebugCard = ref(true)
 function closeDebugCard() { showDebugCard.value = false }
-const debugBlessing = computed(() => blessingsData[0])
+const debugBlessing = computed(() => blessingsData[6]) // 是擽希晝吖
 
 function getTex(alias: string): Texture {
   try {

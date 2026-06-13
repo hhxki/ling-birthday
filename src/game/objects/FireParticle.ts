@@ -62,21 +62,18 @@ export class FireParticle extends Container {
       this.eventMode = 'none'
       this.cursor = 'inherit'
 
+      // 位置动画 — 完成后 resolve，确保粒子到达终点再销毁
       gsap.to(this, {
         x: targetX, y: targetY,
         duration: 1.0, ease: 'power3.in',
+        onComplete: () => resolve(),
       })
       gsap.to(this.sprite.scale, {
         x: 0.1, y: 0.1,
         duration: 1.0, ease: 'power3.in',
       })
       gsap.to(this.sprite, {
-        alpha: 0.8, duration: 0.6, ease: 'power3.in',
-        onComplete: () => {
-          this.visible = false
-          this.alpha = 0
-          resolve()
-        },
+        alpha: 0, duration: 0.8, ease: 'power3.in',
       })
     })
   }

@@ -93,10 +93,13 @@ const overlayRef = ref<HTMLDivElement>()
 const letterRef = ref<HTMLDivElement>()
 const avatarRowRef = ref<HTMLDivElement>()
 const dividerRef = ref<HTMLDivElement>()
-const textRef = ref<HTMLParagraphElement>()
+const textRef = ref<HTMLElement>()
 const audioRowRef = ref<HTMLDivElement>()
 const closeBtnRef = ref<HTMLButtonElement>()
 const mascotRef = ref<HTMLDivElement>()
+
+// 检测 ASCII 字符画：含连续空格 + 反斜杠
+const isAsciiArt = computed(() => /  /.test(props.blessing.text) && /\\/.test(props.blessing.text))
 
 const isClosing = ref(false)
 let enterTl: gsap.core.Timeline | null = null
@@ -123,6 +126,17 @@ onMounted(() => {
 
   // 1. backdrop — 用 to 而非 from，配合 CSS 初始 opacity-0 避免闪现
   enterTl.to(overlayRef.value!, { opacity: 1, duration: 0.35 })
+
+  // backdrop-filter 模糊过渡 — GSAP 无法直接插值字符串，用代理对象驱动
+  const blurState = { val: 0 }
+  enterTl.to(blurState, {
+    val: 4,
+    duration: 0.5,
+    ease: 'power3.out',
+    onUpdate: () => {
+      if (overlayRef.value) overlayRef.value.style.backdropFilter = `blur(${blurState.val}px)`
+    },
+  }, 0)
 
   // 2. letter body — scale up with bounce
   enterTl.from(letterRef.value!, {
@@ -183,6 +197,16 @@ function handleClose() {
     isPlaying.value = false
   }
   gsap.to(overlayRef.value!, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => emit('close') })
+  // 模糊同步淡出
+  const blurOut = { val: 4 }
+  gsap.to(blurOut, {
+    val: 0,
+    duration: 0.25,
+    ease: 'power2.in',
+    onUpdate: () => {
+      if (overlayRef.value) overlayRef.value.style.backdropFilter = `blur(${blurOut.val}px)`
+    },
+  })
 }
 
 onBeforeUnmount(() => {
@@ -193,7 +217,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Transition name="card">
-    <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] backdrop-blur-sm opacity-0">
+    <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] opacity-0" style="backdrop-filter: blur(0px)">
       <div class="relative w-[780px] h-[520px]">
         <!-- wrapper 负责定位 + GSAP 缩放，border-image 在内层以 1:1 渲染避免切图接缝闪烁 -->
         <div ref="letterRef" class="absolute left-[60px] top-[30px] z-10 will-change-transform">
@@ -213,7 +237,10 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div ref="dividerRef" class="h-px mb-2.5 origin-left bg-[linear-gradient(to_right,rgba(255,123,159,0.3),transparent_75%)]" />
-            <p ref="textRef" class="mb-3 text-[15px] leading-[1.7] text-[#475569] whitespace-pre-line">{{ blessing.text }}</p>
+                        <!-- ASCII 字符画：等宽字体保对齐 -->
+            <pre v-if="isAsciiArt" ref="textRef" class="mb-3 text-[13px] leading-[1.8] text-[#475569] whitespace-pre-wrap border-0 bg-transparent p-0 tracking-[-0.02em]" style="font-family: 'Courier New', 'SimSun', monospace">{{ blessing.text }}</pre>
+            <!-- 普通文本：比例字体 -->
+            <p v-else ref="textRef" class="mb-3 text-[15px] leading-[1.7] text-[#475569] whitespace-pre-line">{{ blessing.text }}</p>
             <div
               v-if="audioAvailable"
               ref="audioRowRef"

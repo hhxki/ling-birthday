@@ -380,20 +380,20 @@ export class MatchScene extends Container {
     this.completed = true
     this.fireflies.forEach((ff) => { ff.eventMode = 'none'; ff.cursor = 'inherit' })
 
-    // 最终过渡：房间亮 100%
+    // 房间亮 100%，但不自动切场景 — 等最后一张贺卡关闭
     gsap.to(this.roomBright, {
       alpha: 1, duration: 1, ease: 'power3.inOut',
-      onComplete: () => {
-        gsap.delayedCall(0.8, () => this.onAllCollected?.())
-      },
     })
   }
 
   // ============ 萤火虫交互开关 ============
 
-  /** 卡片关闭时触发 → 背景渐变 */
+  /** 卡片关闭时触发 → 背景渐变；全部收集完后关闭卡片则触发下一阶段 */
   onCardClosed(): void {
     this.updateRoomBright()
+    if (this.completed) {
+      gsap.delayedCall(0.6, () => this.onAllCollected?.())
+    }
   }
 
   setInteractive(active: boolean): void {
