@@ -175,7 +175,7 @@ export class MatchScene extends Container {
     this.match.rotation = MATCH_CONFIG.matchRotation
 
     // 提示文字定位在火柴盒下方
-    this.hintText.x = this.matchbox.x+60
+    this.hintText.x = this.matchbox.x + 80
     this.hintText.y = this.matchbox.y + mbTexH * mbScale / 2 + 120
     this.hintText.alpha = 1
 
@@ -366,6 +366,33 @@ export class MatchScene extends Container {
 
   // ============ 萤火虫收集 ============
 
+  /** 在随机位置生成一只新萤火虫（补位用） */
+  private spawnFirefly(x?: number, y?: number): void {
+    const margin = 60
+    const sx = x ?? (margin + Math.random() * (this.sceneW - margin * 2))
+    const sy = y ?? (margin + Math.random() * (this.sceneH - margin * 2))
+
+    const state: FireflyState = {
+      id: `ff_${++this.idCounter}`,
+      x: sx, y: sy,
+      baseX: sx, baseY: sy,
+      phase: Math.random() * Math.PI * 2,
+      collected: false,
+      blessingFrom: '',
+    }
+    const p = new FireParticle(this.particleTexture, state)
+    p.x = sx
+    p.y = sy
+    p.zIndex = 7
+    p.alpha = 0
+    ;(p as any)._settled = true
+    p.on('pointerdown', () => this.collectFirefly(p))
+    this.addChild(p)
+    this.fireflies.push(p)
+    // 淡入
+    gsap.to(p, { alpha: 1, duration: 0.5, ease: 'power2.out' })
+  }
+
   private collectFirefly(particle: FireParticle): void {
     if (particle.data.collected || this.completed) return
     const blessingFrom = this.getRandomUnshown()
@@ -382,6 +409,8 @@ export class MatchScene extends Container {
       if (idx !== -1) this.fireflies.splice(idx, 1)
       if (particle.parent) particle.parent.removeChild(particle)
       particle.destroy()
+      // 补位：始终维持 25 只在屏
+      if (this.shownBlessings.size < totalBlessings) this.spawnFirefly()
       // 背景渐变延迟到卡片关闭时触发
       if (this.shownBlessings.size >= totalBlessings) this.allDone()
     })
@@ -493,7 +522,7 @@ export class MatchScene extends Container {
     // 彩带从顶部洒落
     this.onConfetti?.()
 
-    gsap.delayedCall(3, () => this.onBlown?.())
+    gsap.delayedCall(1.5, () => this.onBlown?.())
   }
 
   stopMic(): void { this.analyzer.stop() }
@@ -550,7 +579,7 @@ export class MatchScene extends Container {
       this.match.x = this.matchHome.x
       this.match.y = this.matchHome.y
       // 重置提示文字位置
-      this.hintText.x = this.matchbox.x+60
+      this.hintText.x = this.matchbox.x + 80
       this.hintText.y = this.matchbox.y + mbTexH * mbScale / 2 + 120
       this.hintText.alpha = 1
     }

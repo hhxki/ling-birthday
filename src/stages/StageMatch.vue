@@ -71,7 +71,7 @@ onMounted(async () => {
   }
 
   // 蜡烛吹灭 → 下一阶段
-  scene.onBlown = () => setTimeout(() => nextStage(), 2500)
+  scene.onBlown = () => setTimeout(() => nextStage(), 1000)
 
   // 麦克风被拒 → 显示手动按钮
   scene.onMicDenied = () => { showFallbackBtn.value = true; setMicStatus('denied') }
