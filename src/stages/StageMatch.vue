@@ -1,6 +1,6 @@
 <!-- StageMatch — 划火柴 + 汇聚心意（合并场景） -->
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Assets, Texture } from 'pixi.js'
 import { useGameState } from '../composables/useGameState'
 import { gameApp } from '../game/GameApp'
@@ -17,15 +17,10 @@ const canvasContainer = ref<HTMLDivElement>()
 let scene: MatchScene | null = null
 const activeCard = ref<Blessing | null>(null)
 
-// ===== 调试：首页直接展示贺卡方便调九宫格 =====
+// ===== 调试：首页直接展示 blessingsData[0] 方便调九宫格 =====
 const showDebugCard = ref(true)
 function closeDebugCard() { showDebugCard.value = false }
-
-const debugBlessing = reactive<Blessing>({
-  ...blessingsData[0],
-  from: '无名的小粉丝',
-  text: 'Ling生日快乐呀！虽然我只是直播间里一个小小的观众，但你的每次直播都能让我在疲惫的一天后露出笑容。谢谢你，要一直幸福下去！',
-})
+const debugBlessing = computed(() => blessingsData[0])
 
 function getTex(alias: string): Texture {
   try {
@@ -59,8 +54,8 @@ onMounted(async () => {
   scene.onIgnited = () => {}
 
   // 萤火虫收集 → 弹贺卡
-  scene.onParticleCollected = (blessingId: string) => {
-    const blessing = blessingsData.find((b) => b.id === blessingId)
+  scene.onParticleCollected = (blessingFrom: string) => {
+    const blessing = blessingsData.find((b) => b.id === blessingFrom)
     if (blessing) { activeCard.value = blessing; setFirefliesInteractive(false) }
     collectWish()
   }
@@ -107,18 +102,5 @@ function closeCard() {
       :blessing="debugBlessing"
       @close="closeDebugCard"
     />
-
-    <!-- 调试面板 -->
-    <div class="fixed bottom-4 left-4 z-200 flex flex-col gap-2 p-3 rounded-xl bg-[#0b0f19]/85 backdrop-blur-md border border-white/10 text-xs text-white/70 w-64">
-      <span class="text-[11px] tracking-wider text-white/40 uppercase">贺卡调试</span>
-      <label class="flex flex-col gap-1">
-        发送者
-        <input v-model="debugBlessing.from" type="text" class="bg-white/10 border border-white/15 rounded px-2 py-1 text-white text-xs outline-none focus:border-[#ffb03a]/50" />
-      </label>
-      <label class="flex flex-col gap-1">
-        祝福文字
-        <textarea v-model="debugBlessing.text" rows="3" class="bg-white/10 border border-white/15 rounded px-2 py-1 text-white text-xs outline-none focus:border-[#ffb03a]/50 resize-none" />
-      </label>
-    </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <!-- GreetingCard — 三宫格贺卡（border-image，单层无拼缝） -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import gsap from 'gsap'
 import type { Blessing } from '../types'
 import { useAudio } from '../composables/useAudio'
@@ -11,18 +11,65 @@ const emit = defineEmits<{ close: [] }>()
 
 const { playVoice } = useAudio()
 const isPlaying = ref(false)
+const audioAvailable = ref(false)
+const audioChecking = ref(true)
+const audioRemaining = ref('')
+const audioDuration = ref(0) // 预加载时拿到的总时长（秒）
 let currentVoice: ReturnType<typeof playVoice> | null = null
+let progressTimer: ReturnType<typeof setInterval> | null = null
+
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+function startProgress(): void {
+  stopProgress()
+  if (audioDuration.value > 0) {
+    audioRemaining.value = fmtTime(audioDuration.value)
+  }
+  progressTimer = setInterval(() => {
+    const voice = currentVoice
+    if (!voice || !isPlaying.value) { stopProgress(); return }
+    const p = (voice.seek() as number) || 0
+    const d = audioDuration.value || ((voice.duration() as number) || 0)
+    audioRemaining.value = fmtTime(Math.max(0, d - p))
+  }, 200)
+}
+
+function stopProgress(): void {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
+}
+
+function checkAudio(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const audio = new Audio()
+    const timeout = setTimeout(() => resolve(false), 5000)
+    audio.onloadedmetadata = () => {
+      clearTimeout(timeout)
+      audioDuration.value = audio.duration || 0
+      resolve(true)
+    }
+    audio.onerror = () => { clearTimeout(timeout); resolve(false) }
+    audio.preload = 'metadata'
+    audio.src = url
+  })
+}
 
 function handlePlayVoice() {
   if (!props.blessing.audioUrl) return
   if (isPlaying.value) {
     currentVoice?.stop()
+    stopProgress()
     isPlaying.value = false
     return
   }
   currentVoice = playVoice(props.blessing.audioUrl)
   isPlaying.value = true
-  currentVoice.on('end', () => { isPlaying.value = false })
+  currentVoice.on('end', () => { stopProgress(); isPlaying.value = false })
+  currentVoice.on('play', () => startProgress())
+  startProgress() // 兜底：play 事件可能在绑定前就触发
 }
 
 const { cardBgUrl, imageWidth: iw, topSlice: ts, bottomSlice: bs } = CARD_CONFIG
@@ -54,11 +101,28 @@ const mascotRef = ref<HTMLDivElement>()
 const isClosing = ref(false)
 let enterTl: gsap.core.Timeline | null = null
 
-onMounted(() => {
-  enterTl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+/** 音频就绪 + 入场完成后，浮现音频播放条 */
+function showAudioRow(): void {
+  nextTick(() => {
+    if (audioRowRef.value) {
+      gsap.set(audioRowRef.value, { opacity: 0, y: 8 })
+      gsap.to(audioRowRef.value, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' })
+    }
+  })
+}
 
-  // 1. backdrop
-  enterTl.from(overlayRef.value!, { opacity: 0, duration: 0.35 })
+onMounted(() => {
+  // 入场动画立即开始，不等音频检查
+  enterTl = gsap.timeline({
+    defaults: { ease: 'power3.out' },
+    onComplete: () => {
+      // 入场全部播完 → 如果音频已经就绪，延迟浮现
+      if (audioAvailable.value) showAudioRow()
+    },
+  })
+
+  // 1. backdrop — 用 to 而非 from，配合 CSS 初始 opacity-0 避免闪现
+  enterTl.to(overlayRef.value!, { opacity: 1, duration: 0.35 })
 
   // 2. letter body — scale up with bounce
   enterTl.from(letterRef.value!, {
@@ -81,68 +145,79 @@ onMounted(() => {
   // 5. avatar row — slide in from left
   enterTl.from(avatarRowRef.value!, {
     x: -22, opacity: 0,
-    duration: 0.4, ease: 'power2.out',
-  }, '-=0.15')
+    duration: 0.28, ease: 'power2.out',
+  }, '-=0.12')
 
   // 6. divider — stretch from left
   enterTl.from(dividerRef.value!, {
     scaleX: 0,
-    duration: 0.35, ease: 'power2.inOut',
-  }, '-=0.08')
+    duration: 0.25, ease: 'power2.inOut',
+  }, '-=0.06')
 
   // 7. text — fade up
   enterTl.from(textRef.value!, {
     y: 12, opacity: 0,
-    duration: 0.4,
-  }, '-=0.08')
+    duration: 0.28,
+  }, '-=0.12')
 
-  // 8. audio row (conditional)
-  if (audioRowRef.value) {
-    enterTl.from(audioRowRef.value, {
-      y: 8, opacity: 0,
-      duration: 0.3,
-    }, '-=0.05')
+  // 8. 音频异步检查，不阻塞入场动画
+  if (props.blessing.audioUrl) {
+    checkAudio(props.blessing.audioUrl).then((ok) => {
+      audioAvailable.value = ok
+      audioChecking.value = false
+      // 入场已播完 → 立即浮现；否则等 onComplete 回调
+      if (ok && enterTl && !enterTl.isActive()) showAudioRow()
+    })
+  } else {
+    audioChecking.value = false
   }
 })
 
 function handleClose() {
   if (isClosing.value || !enterTl) return
   isClosing.value = true
+  // 关闭前停止正在播放的语音
+  if (isPlaying.value) {
+    currentVoice?.stop()
+    stopProgress()
+    isPlaying.value = false
+  }
   gsap.to(overlayRef.value!, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => emit('close') })
 }
 
 onBeforeUnmount(() => {
+  stopProgress()
   enterTl?.kill()
 })
 </script>
 
 <template>
   <Transition name="card">
-    <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] backdrop-blur-sm">
+    <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] backdrop-blur-sm opacity-0">
       <div class="relative w-[780px] h-[520px]">
         <!-- wrapper 负责定位 + GSAP 缩放，border-image 在内层以 1:1 渲染避免切图接缝闪烁 -->
         <div ref="letterRef" class="absolute left-[60px] top-[30px] z-10 will-change-transform">
           <div
-            class="w-[560px] min-h-[200px] box-border backface-hidden [transform:translateZ(0)]"
+            class="w-[560px] min-h-[390px] box-border backface-hidden [transform:translateZ(0)]"
             :style="{ ...frameStyle, '--lw': '680px' }"
           >
             <div class="py-4 pr-[130px] pl-11">
             <div ref="avatarRowRef" class="flex items-center gap-[14px] mb-2">
-              <div class="w-14 h-14 rounded-full border-[3px] border-[#ffccd8] bg-[#fff0f3] flex items-center justify-center relative shrink-0 shadow-[inset_0_2px_4px_rgba(255,123,159,0.1)]">
-                <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-[var(--color-ling-pink)] text-white text-[9px] py-px px-1.5 rounded-full whitespace-nowrap">🎀</div>
-                <span class="text-2xl opacity-[0.35]">🐱</span>
+              <div class="w-14 h-14 rounded-full border-[3px] border-[#ffccd8] bg-[#fff0f3] flex items-center justify-center relative shrink-0 overflow-hidden shadow-[inset_0_2px_4px_rgba(255,123,159,0.1)]">
+                <img v-if="blessing.avatarUrl" :src="blessing.avatarUrl" alt="" class="w-full h-full object-cover" />
+                <span v-else class="text-2xl opacity-[0.35]">🐱</span>
               </div>
               <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] tracking-[0.15em] text-[var(--color-ling-pink)] uppercase">From</span>
-                <span class="text-base font-semibold text-[#334155]">{{ blessing.from }}</span>
+                <span class="text-base font-semibold text-[#334155]">{{ blessing.user }}</span>
               </div>
             </div>
             <div ref="dividerRef" class="h-px mb-2.5 origin-left bg-[linear-gradient(to_right,rgba(255,123,159,0.3),transparent_75%)]" />
             <p ref="textRef" class="mb-3 text-[15px] leading-[1.7] text-[#475569] whitespace-pre-line">{{ blessing.text }}</p>
             <div
-              v-if="blessing.audioUrl"
+              v-if="audioAvailable"
               ref="audioRowRef"
-              class="flex items-center justify-between rounded-xl p-3 border transition-colors duration-300"
+              class="flex items-center justify-between rounded-xl p-3 border transition-colors duration-300 opacity-0"
               :class="isPlaying
                 ? 'bg-[rgba(99,179,237,0.06)] border-[rgba(99,179,237,0.2)]'
                 : 'bg-[rgba(255,123,159,0.05)] border-[rgba(255,123,159,0.12)]'"
@@ -150,7 +225,7 @@ onBeforeUnmount(() => {
               <!-- left: circular play button + label -->
               <div class="flex items-center gap-3">
                 <button
-                  class="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-gradient-to-r from-[var(--color-ling-pink)] to-[var(--color-amber-gold)]"
+                  class="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
                   @click="handlePlayVoice"
                 >
                   <svg v-if="!isPlaying" class="h-5 w-5 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -164,13 +239,13 @@ onBeforeUnmount(() => {
                 <span class="text-xs font-medium text-[#475569]">{{ isPlaying ? '正在播放语音…' : '点击聆听语音祝福' }}</span>
               </div>
 
-              <!-- right: bouncing bars + time -->
+              <!-- right: bouncing bars + remaining time -->
               <div class="flex items-center gap-[2px] h-6">
-                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-amber-gold)]" />
-                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-ling-pink)]" style="animation-delay: 0.10s" />
-                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-clear-blue)]" style="animation-delay: 0.20s" />
-                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-ling-pink)]" style="animation-delay: 0.30s" />
-                <span class="text-xs font-mono text-[var(--color-ling-pink)] ml-2 font-semibold">0:12</span>
+                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-amber-gold)]" :style="{ animationPlayState: isPlaying ? 'running' : 'paused' }" />
+                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-ling-pink)]" :style="{ animationPlayState: isPlaying ? 'running' : 'paused', animationDelay: '0.10s' }" />
+                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-clear-blue)]" :style="{ animationPlayState: isPlaying ? 'running' : 'paused', animationDelay: '0.20s' }" />
+                <span class="audio-bar w-[3px] rounded-full bg-[var(--color-ling-pink)]" :style="{ animationPlayState: isPlaying ? 'running' : 'paused', animationDelay: '0.30s' }" />
+                <span class="text-xs font-mono text-[var(--color-ling-pink)] ml-2 font-semibold">{{ audioRemaining || (audioDuration > 0 ? fmtTime(audioDuration) : '0:00') }}</span>
               </div>
             </div>
           </div>

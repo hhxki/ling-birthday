@@ -21,7 +21,7 @@ export class WishesScene extends Container {
   private idCounter = 0
   private collectedCount = 0
 
-  onParticleCollected?: (blessingId: string) => void
+  onParticleCollected?: (blessingFrom: string) => void
   onAllCollected?: () => void
 
   constructor() {
@@ -75,7 +75,7 @@ export class WishesScene extends Container {
       id: `ff_${++this.idCounter}`,
       x: sx, y: sy, baseX: sx, baseY: sy,
       phase: Math.random() * Math.PI * 2,
-      collected: false, blessingId: '',
+      collected: false, blessingFrom: '',
     }
     const p = new FireParticle(this.particleTexture, state)
     p.zIndex = 2
@@ -87,18 +87,18 @@ export class WishesScene extends Container {
 
   private collect(particle: FireParticle): void {
     if (particle.data.collected || this.completed) return
-    const blessingId = this.getRandomUnshown()
-    if (!blessingId) { this.done(); return }
+    const blessingFrom = this.getRandomUnshown()
+    if (!blessingFrom) { this.done(); return }
 
-    particle.data.blessingId = blessingId
-    this.shownBlessings.add(blessingId)
+    particle.data.blessingFrom = blessingFrom
+    this.shownBlessings.add(blessingFrom)
     this.collectedCount++
 
     // 萤火虫飞向屏幕中央偏下（蛋糕位置在背景图里）
     const targetX = this.sceneW / 2
     const targetY = this.sceneH * 0.65
     particle.collectTo(targetX, targetY).then(() => {
-      this.onParticleCollected?.(blessingId)
+      this.onParticleCollected?.(blessingFrom)
       const idx = this.fireflies.indexOf(particle)
       if (idx !== -1) this.fireflies.splice(idx, 1)
       if (particle.parent) particle.parent.removeChild(particle)

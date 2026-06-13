@@ -2,7 +2,7 @@
 // ParticlePool — 粒子对象池
 // 避免频繁 new/destroy 导致 GC 卡顿
 // ============================================================
-import { Container, Sprite, Texture } from 'pixi.js'
+import { Sprite, Texture } from 'pixi.js'
 
 export class ParticlePool {
   private pool: Sprite[] = []

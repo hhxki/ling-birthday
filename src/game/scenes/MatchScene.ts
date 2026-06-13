@@ -41,7 +41,7 @@ export class MatchScene extends Container {
 
   // 回调
   onIgnited?: () => void
-  onParticleCollected?: (blessingId: string) => void
+  onParticleCollected?: (blessingFrom: string) => void
   onAllCollected?: () => void
 
   // DOM 事件
@@ -292,7 +292,7 @@ export class MatchScene extends Container {
         baseX: settleX, baseY: settleY,
         phase: Math.random() * Math.PI * 2,
         collected: false,
-        blessingId: '',
+        blessingFrom: '',
       }
       const p = new FireParticle(this.particleTexture, state)
       p.zIndex = 7
@@ -330,16 +330,16 @@ export class MatchScene extends Container {
 
   private collectFirefly(particle: FireParticle): void {
     if (particle.data.collected || this.completed) return
-    const blessingId = this.getRandomUnshown()
-    if (!blessingId) { this.allDone(); return }
+    const blessingFrom = this.getRandomUnshown()
+    if (!blessingFrom) { this.allDone(); return }
 
-    particle.data.blessingId = blessingId
-    this.shownBlessings.add(blessingId)
+    particle.data.blessingFrom = blessingFrom
+    this.shownBlessings.add(blessingFrom)
 
     const tx = this.sceneW * PARTICLE_CONFIG.candleX
     const ty = this.sceneH * PARTICLE_CONFIG.candleY
     particle.collectTo(tx, ty).then(() => {
-      this.onParticleCollected?.(blessingId)
+      this.onParticleCollected?.(blessingFrom)
       const idx = this.fireflies.indexOf(particle)
       if (idx !== -1) this.fireflies.splice(idx, 1)
       if (particle.parent) particle.parent.removeChild(particle)

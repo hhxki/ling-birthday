@@ -42,7 +42,7 @@ export function useMicrophone() {
       const source = audioCtx.createMediaStreamSource(stream)
       source.connect(analyser)
 
-      dataArray = new Uint8Array(analyser.frequencyBinCount)
+      dataArray = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
       micStatus.value = 'ready'
       startLoop()
     } catch {
@@ -56,7 +56,7 @@ export function useMicrophone() {
     function tick() {
       if (!analyser || !dataArray) return
 
-      analyser.getByteTimeDomainData(dataArray)
+      analyser.getByteTimeDomainData(dataArray as Uint8Array<ArrayBuffer>)
 
       // 计算 RMS
       let sum = 0

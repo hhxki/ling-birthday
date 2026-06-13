@@ -11,19 +11,13 @@ export type GameStage =
   | 'timeline'
   | 'ending'
 
-/** 贺卡样式主题 */
-export type CardStyleType =
-  | 'classic-letter'
-  | 'cherry-blossom'
-  | 'city-pop-vinyl'
-
-/** 粉丝祝福数据 */
+/** 粉丝祝福数据 — id 用于排序和去重，user 是显示名 */
 export interface Blessing {
   id: string
-  from: string
+  user: string
   text: string
+  avatarUrl?: string
   audioUrl?: string
-  styleType: CardStyleType
 }
 
 /** 时光长廊条目 */
@@ -73,5 +67,5 @@ export interface FireflyState {
   baseY: number
   phase: number // Perlin noise phase offset
   collected: boolean
-  blessingId: string
+  blessingFrom: string
 }

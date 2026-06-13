@@ -66,7 +66,7 @@ export class CandleScene extends Container {
         baseX: cx, baseY: cy,
         phase: Math.random() * Math.PI * 2,
         collected: true,
-        blessingId: '',
+        blessingFrom: '',
       }
       const p = new FireParticle(this.particleTexture, state)
       p.alpha = 1

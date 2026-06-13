@@ -33,8 +33,8 @@ onMounted(async () => {
   const w = window.innerWidth, h = window.innerHeight
   scene.init(roomDarkTex, roomBrightTex, particleTex, w, h)
 
-  scene.onParticleCollected = (blessingId: string) => {
-    const blessing = blessingsData.find((b) => b.id === blessingId)
+  scene.onParticleCollected = (blessingFrom: string) => {
+    const blessing = blessingsData.find((b) => b.id === blessingFrom)
     if (blessing) { activeCard.value = blessing; setFirefliesInteractive(false) }
     collectWish()
   }
@@ -44,7 +44,7 @@ onMounted(async () => {
   gameApp.setScene(scene)
   gameApp.app.canvas.style.pointerEvents = 'auto'
 
-  scene.spawnFireflies(width / 2, height / 2)
+  scene.spawnFireflies(window.innerWidth / 2, window.innerHeight / 2)
   gameApp.app.ticker.add(updateFireflies)
 })
 

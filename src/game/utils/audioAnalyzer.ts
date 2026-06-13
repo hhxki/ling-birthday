@@ -27,7 +27,7 @@ export class AudioAnalyzer {
       const source = this.audioCtx.createMediaStreamSource(stream)
       source.connect(this.analyser)
 
-      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount)
+      this.dataArray = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount))
       this.loop()
       return 'ready'
     } catch {
@@ -38,7 +38,7 @@ export class AudioAnalyzer {
   private loop = (): void => {
     if (!this.analyser || !this.dataArray || !this.callback) return
 
-    this.analyser.getByteTimeDomainData(this.dataArray)
+    this.analyser.getByteTimeDomainData(this.dataArray as Uint8Array<ArrayBuffer>)
 
     let sum = 0
     for (let i = 0; i < this.dataArray.length; i++) {
