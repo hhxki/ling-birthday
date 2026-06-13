@@ -1,10 +1,11 @@
 // ============================================================
 // MatchScene — 划火柴 + 汇聚心意（同一场景无缝衔接）
 // ============================================================
-import { Container, Sprite, Texture, BlurFilter } from 'pixi.js'
+import { Container, Sprite, Texture, BlurFilter, Text, TextStyle } from 'pixi.js'
 import gsap from 'gsap'
 import { Match } from '../objects/Match'
 import { FireParticle } from '../objects/FireParticle'
+import { AudioAnalyzer } from '../utils/audioAnalyzer'
 import { gameApp } from '../GameApp'
 import { MATCH_CONFIG, PARTICLE_CONFIG } from '../../data/config'
 import { blessingsData, totalBlessings } from '../../data/blessings'
@@ -20,6 +21,7 @@ export class MatchScene extends Container {
   match: Match
   private flame: Sprite
   private flameBlur: Sprite
+  private hintText: Text
   // 萤火虫阶段
   private fireflies: FireParticle[] = []
   private shownBlessings = new Set<string>()
@@ -43,6 +45,14 @@ export class MatchScene extends Container {
   onIgnited?: () => void
   onParticleCollected?: (blessingFrom: string) => void
   onAllCollected?: () => void
+  onBlown?: () => void
+  onMicDenied?: () => void
+  onConfetti?: () => void
+
+  // 蜡烛阶段
+  private analyzer: AudioAnalyzer
+  private blown = false
+  private candleParticles: FireParticle[] = []
 
   // DOM 事件
   private _onDomDown: ((e: PointerEvent) => void) | null = null
@@ -87,6 +97,22 @@ export class MatchScene extends Container {
     this.match.cursor = 'grab'
     this.addChild(this.match)
 
+    // 提示文字
+    this.hintText = new Text({
+      text: '滑动火柴',
+      style: new TextStyle({
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 32,
+        fontWeight: 'bold',
+        fill: '#ffffff',
+        letterSpacing: 8,
+      }),
+    })
+    this.hintText.anchor.set(0.5)
+    this.hintText.zIndex = 2
+    this.hintText.alpha = 1
+    this.addChild(this.hintText)
+
     // 火焰辉光
     this.flameBlur = new Sprite(flameTex)
     this.flameBlur.anchor.set(0.5, 1)
@@ -102,6 +128,8 @@ export class MatchScene extends Container {
     this.flame.alpha = 0
     this.flame.zIndex = 6
     this.addChild(this.flame)
+
+    this.analyzer = new AudioAnalyzer()
 
     this._onDomDown = (e: PointerEvent) => this.onMatchDown(e)
     this._onDomMove = (e: PointerEvent) => this.onMatchMove(e)
@@ -145,6 +173,12 @@ export class MatchScene extends Container {
     }
     this.match.show(this.matchHome.x, this.matchHome.y)
     this.match.rotation = MATCH_CONFIG.matchRotation
+
+    // 提示文字定位在火柴盒下方
+    this.hintText.x = this.matchbox.x+60
+    this.hintText.y = this.matchbox.y + mbTexH * mbScale / 2 + 120
+    this.hintText.alpha = 1
+
     this.updateFlamePosition()
 
     this.ignited = false
@@ -176,6 +210,10 @@ export class MatchScene extends Container {
     this.dragDistance = 0
     this.dragStartPos = { x: e.clientX, y: e.clientY }
     this.match.cursor = 'grabbing'
+    // 隐藏提示文字
+    if (this.hintText.alpha > 0) {
+      gsap.to(this.hintText, { alpha: 0, y: this.hintText.y + 20, duration: 0.4, ease: 'power2.out' })
+    }
   }
 
   private onMatchMove(e: PointerEvent): void {
@@ -349,20 +387,24 @@ export class MatchScene extends Container {
     })
   }
 
-  private brightStep = 0 // 0/1/2/3
+  private brightStep = 0 // 0/1/2/3/4
 
-  /** 收集进度 → 房间暗渐隐 / 房间亮渐显（3段，每段有过移动画） */
+  /** 收集进度 → 房间暗渐隐 / 房间亮渐显（4段，每段有过移动画） */
   private updateRoomBright(): void {
     const progress = this.shownBlessings.size / totalBlessings
     let newStep = 0
-    if (progress > 2 / 3) newStep = 3
-    else if (progress > 1 / 3) newStep = 2
+    if (progress >= 0.8) newStep = 4
+    else if (progress >= 0.6) newStep = 3
+    else if (progress >= 0.4) newStep = 2
     else if (progress > 0) newStep = 1
 
     if (newStep <= this.brightStep) return
     this.brightStep = newStep
 
-    const target = newStep === 3 ? 1.0 : newStep === 2 ? 0.75 : 0.5
+    const target = newStep === 4 ? 1.0
+      : newStep === 3 ? 0.8
+      : newStep === 2 ? 0.6
+      : 0.4
 
     gsap.to(this.roomBright, {
       alpha: target, duration: 1.2, ease: 'power3.inOut',
@@ -386,13 +428,83 @@ export class MatchScene extends Container {
     })
   }
 
+  // ============ 场景过渡动画 ============
+
+  /** 淡出剩余萤火虫（过渡到下一阶段前调用），返回 Promise */
+  fadeOutScene(): Promise<void> {
+    return new Promise((resolve) => {
+      const tl = gsap.timeline({ onComplete: resolve })
+      // 剩余萤火虫逐个淡出
+      this.fireflies.forEach((ff, i) => {
+        tl.to(ff, { alpha: 0, duration: 0.25, ease: 'power2.in' }, i * 0.03)
+      })
+    })
+  }
+
+  // ============ 蜡烛阶段 ============
+
+  /** 进入蜡烛阶段：房间保持亮起，启动麦克风 */
+  async startCandlePhase(): Promise<void> {
+    if (this.roomDark) this.roomDark.alpha = 0
+
+    await new Promise(r => setTimeout(r, 300))
+    const result = await this.analyzer.start((_v, isBlowing) => {
+      if (isBlowing && !this.blown) this.blowOut()
+    })
+    if (result === 'denied') this.onMicDenied?.()
+  }
+
+  blowOut(): void {
+    if (this.blown) return
+    this.blown = true
+
+    const cx = this.sceneW * PARTICLE_CONFIG.candleX
+    const cy = this.sceneH * PARTICLE_CONFIG.candleY
+    for (let i = 0; i < 50; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const dist = 250 + Math.random() * 500
+      const state: FireflyState = {
+        id: `blow_${++this.idCounter}`,
+        x: cx, y: cy,
+        baseX: cx, baseY: cy,
+        phase: Math.random() * Math.PI * 2,
+        collected: true,
+        blessingFrom: '',
+      }
+      const p = new FireParticle(this.particleTexture, state)
+      p.alpha = 1
+      p.zIndex = 10
+      this.addChild(p)
+      this.candleParticles.push(p)
+
+      gsap.to(p, {
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        alpha: 0,
+        duration: 1.5 + Math.random() * 1.5,
+        ease: 'power3.out',
+        onComplete: () => {
+          if (p.parent) p.parent.removeChild(p)
+          p.destroy()
+        },
+      })
+    }
+
+    // 彩带从顶部洒落
+    this.onConfetti?.()
+
+    gsap.delayedCall(3, () => this.onBlown?.())
+  }
+
+  stopMic(): void { this.analyzer.stop() }
+
   // ============ 萤火虫交互开关 ============
 
   /** 卡片关闭时触发 → 背景渐变；全部收集完后关闭卡片则触发下一阶段 */
   onCardClosed(): void {
     this.updateRoomBright()
     if (this.completed) {
-      gsap.delayedCall(0.6, () => this.onAllCollected?.())
+      gsap.delayedCall(0.5, () => this.onAllCollected?.())
     }
   }
 
@@ -437,6 +549,10 @@ export class MatchScene extends Container {
     if (!this.isDragging && !this.ignited) {
       this.match.x = this.matchHome.x
       this.match.y = this.matchHome.y
+      // 重置提示文字位置
+      this.hintText.x = this.matchbox.x+60
+      this.hintText.y = this.matchbox.y + mbTexH * mbScale / 2 + 120
+      this.hintText.alpha = 1
     }
   }
 
@@ -449,13 +565,21 @@ export class MatchScene extends Container {
       canvas.removeEventListener('pointermove', this._onDomMove!)
       canvas.removeEventListener('pointerup', this._onDomUp!)
     }
+    this.analyzer.stop()
     gsap.killTweensOf(this.match)
     gsap.killTweensOf(this.flame)
     gsap.killTweensOf(this.flameBlur)
+    gsap.killTweensOf(this.hintText)
     gsap.killTweensOf(this.matchBg)
     gsap.killTweensOf(this.roomDark)
     gsap.killTweensOf(this.roomBright)
     this.fireflies = []
+    for (const p of this.candleParticles) {
+      gsap.killTweensOf(p)
+      if (p.parent) p.parent.removeChild(p)
+      p.destroy()
+    }
+    this.candleParticles = []
     this.destroy({ children: true })
   }
 }

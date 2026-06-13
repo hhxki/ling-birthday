@@ -9,7 +9,7 @@ import { asset } from './config'
 
 export const BGM = {
   /** 主界面 BGM（划火柴 + 收集萤火虫阶段） */
-  main: asset('/audio/main.mp3'),
+  main: asset('/audio/世界は私のためだけに.mp3'),
   /** 吹蜡烛阶段 BGM（可选，不设则沿用 main） */
   candle: asset('/audio/candle.mp3'),
   /** 结尾鸣谢 BGM */
@@ -20,7 +20,7 @@ export const BGM = {
 
 export const SFX = {
   /** 火柴划燃 */
-  matchStrike: asset('/audio/match-strike.mp3'),
+  matchStrike: asset('/audio/lighting-a-match.mp3'),
   /** 萤火虫被收集 */
   fireflyCollect: asset('/audio/firefly-collect.mp3'),
   /** 全部收集完成 */

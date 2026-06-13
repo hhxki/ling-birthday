@@ -3,6 +3,7 @@
 // ============================================================
 import { Howl, Howler } from 'howler'
 import { ref, readonly } from 'vue'
+import { AUDIO_CONFIG } from '../data/config'
 
 const bgmPlaying = ref(false)
 const sfxEnabled = ref(true)
@@ -42,6 +43,18 @@ export function useAudio() {
   /** 设置 BGM 音量 */
   function setBGMVolume(v: number): void {
     bgm?.volume(v)
+  }
+
+  /** 智能压低 BGM（播放语音/视频时调用） */
+  function duckBGM(): void {
+    if (!bgm) return
+    bgm.volume(AUDIO_CONFIG.duckBgmVolume)
+  }
+
+  /** 恢复 BGM 音量 */
+  function restoreBGM(vol: number): void {
+    if (!bgm) return
+    bgm.volume(vol)
   }
 
   /** 播放一次性音效 */
@@ -98,6 +111,8 @@ export function useAudio() {
     pauseBGM,
     resumeBGM,
     setBGMVolume,
+    duckBGM,
+    restoreBGM,
     playSFX,
     playVoice,
     toggleMute,

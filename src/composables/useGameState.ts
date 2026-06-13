@@ -17,7 +17,6 @@ const state = reactive<GameState>({
 /** 按顺序的阶段列表 */
 const STAGE_ORDER: GameStage[] = [
   'match',
-  'blow-candle',
   'ending',
 ]
 

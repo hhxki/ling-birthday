@@ -4,12 +4,12 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import gsap from 'gsap'
 import type { Blessing } from '../types'
 import { useAudio } from '../composables/useAudio'
-import { CARD_CONFIG } from '../data/config'
+import { CARD_CONFIG, AUDIO_CONFIG } from '../data/config'
 
 const props = defineProps<{ blessing: Blessing }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { playVoice } = useAudio()
+const { playVoice, duckBGM, restoreBGM } = useAudio()
 const isPlaying = ref(false)
 const audioAvailable = ref(false)
 const audioChecking = ref(true)
@@ -92,6 +92,7 @@ function checkVideo(url: string): Promise<boolean> {
 
 function handlePlayVideo() {
   showVideoOverlay.value = true
+  duckBGM()
   nextTick(() => {
     const el = videoOverlayRef.value
     const video = videoRef.value
@@ -109,6 +110,7 @@ function handleCloseVideo() {
     videoRef.value.src = ''
   }
   showVideoOverlay.value = false
+  restoreBGM(AUDIO_CONFIG.bgmVolume)
 }
 
 function handlePlayVoice() {
@@ -117,11 +119,17 @@ function handlePlayVoice() {
     currentVoice?.stop()
     stopProgress()
     isPlaying.value = false
+    restoreBGM(AUDIO_CONFIG.bgmVolume)
     return
   }
+  duckBGM()
   currentVoice = playVoice(props.blessing.audioUrl)
   isPlaying.value = true
-  currentVoice.on('end', () => { stopProgress(); isPlaying.value = false })
+  currentVoice.on('end', () => {
+    stopProgress()
+    isPlaying.value = false
+    restoreBGM(AUDIO_CONFIG.bgmVolume)
+  })
   currentVoice.on('play', () => startProgress())
   startProgress() // 兜底：play 事件可能在绑定前就触发
 }
@@ -274,6 +282,7 @@ function handleClose() {
   if (showVideoOverlay.value) {
     videoRef.value?.pause()
     showVideoOverlay.value = false
+    restoreBGM(AUDIO_CONFIG.bgmVolume)
   }
   gsap.to(overlayRef.value!, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => emit('close') })
   // 模糊同步淡出

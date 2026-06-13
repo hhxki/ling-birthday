@@ -131,7 +131,9 @@ export const BLOW_CONFIG = {
 /** 音频全局配置 */
 export const AUDIO_CONFIG = {
   /** 背景音乐音量 (0~1) */
-  bgmVolume: 0.3,
+  bgmVolume: 0.02,
+  /** 播放语音/视频时 BGM 压低目标音量 (0~1) */
+  duckBgmVolume: 0.008,
   /** 音效音量 (0~1) */
   sfxVolume: 0.5,
   /** 语音音量 (0~1) */
