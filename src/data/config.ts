@@ -6,7 +6,7 @@
 export const USE_CDN = import.meta.env.VITE_USE_CDN === 'true'
 
 /** 生产环境 CDN 基础路径 */
-const CDN_BASE_URL = 'https://cdn.example.com/ling-birthday'
+const CDN_BASE_URL = 'https://ling-birthday.oss-cn-chengdu.aliyuncs.com'
 
 /** 测试环境本地资源路径（public/ 下的目录） */
 const LOCAL_ASSET_PATH = '/test-assets'
@@ -40,7 +40,6 @@ export const CRITICAL_ASSETS = [
   { alias: 'matchbox', src: asset('/assets/火柴盒.png') },
   { alias: 'match-bg', src: asset('/assets/火柴背景.png') },
   { alias: 'fire-particle', src: asset('/assets/particle-smoke.png') },
-  { alias: 'glow-particle', src: asset('/assets/particle-smoke.png') },
   { alias: 'room-dark', src: asset('/assets/房间暗.png') },
   { alias: 'room-bright', src: asset('/assets/房间亮.png') },
   { alias: 'card-bg', src: asset('/assets/贺卡.png') },

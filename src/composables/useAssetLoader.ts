@@ -24,7 +24,7 @@ export function useAssetLoader() {
     try {
       // PixiJS v8 批量加载 + 进度回调
       await Assets.load(
-        assets.map((a) => ({ alias: a.alias, src: a.src })),
+        assets.map((a) => ({ alias: a.alias, src: a.src, crossOrigin: 'anonymous' })),
         (p) => {
           progress.value = Math.round(p * 100)
         },
@@ -42,7 +42,7 @@ export function useAssetLoader() {
    */
   function loadInBackground(assets: AssetEntry[]): void {
     Assets.load(
-      assets.map((a) => ({ alias: a.alias, src: a.src })),
+      assets.map((a) => ({ alias: a.alias, src: a.src, crossOrigin: 'anonymous' })),
     ).catch(() => {
       // 后台资源静默失败，不阻塞体验
     })
