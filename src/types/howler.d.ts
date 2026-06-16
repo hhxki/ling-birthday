@@ -20,5 +20,6 @@ declare module 'howler' {
 
   export const Howler: {
     volume(v?: number): number
+    ctx: AudioContext | null
   }
 }

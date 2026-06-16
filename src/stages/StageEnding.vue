@@ -96,8 +96,8 @@ function handleRestart() {
 
 <template>
   <div class="fixed inset-0 z-20 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,#111832_0%,#080c18_100%)]">
-    <div class="ending-content flex flex-col items-center gap-6 text-center">
-      <h1 class="ending-title text-5xl font-bold tracking-[4px] text-[#ff7b9f] m-0" style="text-shadow: 0 0 40px rgba(255,123,159,0.4)">🎂 生日快乐 由川伶</h1>
+    <div class="ending-content flex flex-col items-center gap-6 text-center px-4 max-w-full">
+      <h1 class="ending-title text-3xl sm:text-4xl md:text-5xl font-bold tracking-[2px] md:tracking-[4px] text-[#ff7b9f] m-0 px-4" style="text-shadow: 0 0 40px rgba(255,123,159,0.4)">🎂 生日快乐 由川伶</h1>
       <p class="ending-sub text-[15px] tracking-[2px] text-white/50 m-0 max-w-80 leading-relaxed">感谢每一位用心的粉丝，感谢每一段珍贵的回忆</p>
 
       <div class="mt-4">

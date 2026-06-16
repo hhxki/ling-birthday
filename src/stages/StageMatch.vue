@@ -175,7 +175,7 @@ watch(showCounter, async (visible) => {
 <template>
   <div ref="canvasContainer" class="fixed inset-0 z-5">
     <!-- 汇聚心意 进度气泡（test.html 风格） -->
-    <div v-if="showCounter" ref="counterEl" class="heart-counter-box fixed top-6 left-6 z-60 w-[238px] bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-4 py-3 flex flex-col gap-2.5 select-none">
+    <div v-if="showCounter" ref="counterEl" class="heart-counter-box fixed top-6 left-4 sm:left-6 z-60 w-[calc(100vw-32px)] sm:w-[238px] bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-4 py-3 flex flex-col gap-2.5 select-none">
       <!-- 角落星星 -->
       <span class="star-sparkle absolute -top-2 -left-1.5 text-amber-300 text-sm">✦</span>
       <span class="star-sparkle absolute -bottom-1.5 -right-0.5 text-sky-400 text-xs" style="animation-delay: 0.5s;">✦</span>
@@ -217,7 +217,7 @@ watch(showCounter, async (visible) => {
 
     <!-- 麦克风提示（test2.html 风格） -->
     <Transition name="fade">
-      <div v-if="state.micStatus === 'requesting'" class="candle-prompt-box fixed bottom-15 left-1/2 -translate-x-1/2 z-60 flex items-center gap-4 bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-5 py-3 select-none">
+      <div v-if="state.micStatus === 'requesting'" class="candle-prompt-box fixed bottom-15 left-1/2 -translate-x-1/2 z-60 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-5 py-3 select-none max-w-[calc(100vw-2rem)]">
         <!-- 角落星星 -->
         <span class="star-sparkle absolute -top-2 -right-1 text-amber-300 text-base">✦</span>
         <span class="star-sparkle absolute -bottom-2 -left-1 text-sky-400 text-xs" style="animation-delay: 0.7s;">✦</span>
@@ -233,7 +233,7 @@ watch(showCounter, async (visible) => {
         <!-- 中间：文案 -->
         <div class="flex flex-col justify-center">
           <span class="text-[8px] uppercase font-bold tracking-[0.2em] text-sky-400 leading-none mb-0.5">Make a special wish</span>
-          <h2 class="text-sm font-black tracking-wide" style="background: linear-gradient(to right, #ff7b9f, #ff4b5c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">请允许麦克风访问，对着麦克风吹气吧</h2>
+          <h2 class="text-xs sm:text-sm font-black tracking-wide text-center sm:text-left" style="background: linear-gradient(to right, #ff7b9f, #ff4b5c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">请允许麦克风访问，对着麦克风吹气吧</h2>
         </div>
         <!-- 右侧：呼气引导 -->
         <div class="wind-puff flex items-center justify-center border-l border-pink-100 pl-3 h-6 text-base">
@@ -243,7 +243,7 @@ watch(showCounter, async (visible) => {
     </Transition>
     <!-- 手动吹灭按钮 -->
     <Transition name="fade">
-      <button v-if="showFallbackBtn" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-60 flex items-center gap-3 px-8 py-4 rounded-3xl border-2 border-[#ffb03a]/50 bg-[#1a1210]/90 backdrop-blur-md text-[#ffb03a] text-[15px] font-semibold tracking-wide cursor-pointer transition-all duration-300 shadow-[0_0_20px_rgba(255,176,58,0.15),0_0_40px_rgba(255,176,58,0.06)] hover:bg-[#241815] hover:border-[#ffb03a]/70 hover:shadow-[0_0_32px_rgba(255,176,58,0.3),0_0_60px_rgba(255,176,58,0.12)] active:scale-95" @click="manualBlow">
+      <button v-if="showFallbackBtn" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-60 flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 rounded-3xl border-2 border-[#ffb03a]/50 bg-[#1a1210]/90 backdrop-blur-md text-[#ffb03a] text-[13px] sm:text-[15px] font-semibold tracking-wide cursor-pointer transition-all duration-300 shadow-[0_0_20px_rgba(255,176,58,0.15),0_0_40px_rgba(255,176,58,0.06)] hover:bg-[#241815] hover:border-[#ffb03a]/70 hover:shadow-[0_0_32px_rgba(255,176,58,0.3),0_0_60px_rgba(255,176,58,0.12)] active:scale-95 max-w-[calc(100vw-2rem)]" @click="manualBlow">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 4C12 4 10 8 10 12C10 12 8 14 6 16C8 18 10 20 10 20C10 20 12 24 16 24S22 20 22 20C22 20 24 18 26 16C24 14 22 12 22 12C22 8 20 4 16 4Z" stroke="currentColor" stroke-width="1.5" /><path d="M16 14V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
         <span>用手扇风（点击吹灭）</span>
       </button>

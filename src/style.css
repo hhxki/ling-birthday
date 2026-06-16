@@ -20,6 +20,7 @@ body {
   color: #fff;
   font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation; /* 消除移动端 300ms 点击延迟 */
 }
 
 img {

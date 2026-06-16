@@ -5,7 +5,7 @@ defineProps<{ progress: number; error?: boolean }>()
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f19]">
-    <div class="flex flex-col items-center gap-6">
+    <div class="flex flex-col items-center gap-6 px-4">
       <!-- 火柴图标 -->
       <div class="transition-transform duration-600" :class="{ 'animate-[breathe_1.8s_ease-in-out_infinite]': progress >= 100 }">
         <svg width="48" height="120" viewBox="0 0 48 120" fill="none">

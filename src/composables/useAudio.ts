@@ -11,6 +11,23 @@ const sfxEnabled = ref(true)
 let bgm: Howl | null = null
 const sfxCache = new Map<string, Howl>()
 
+/** BGM 还没真正播起来之前，音效请求暂存这里 */
+const pendingSFX: Array<{ src: string; volume: number }> = []
+
+/** 补播所有排队的音效 */
+function flushPendingSFX(): void {
+  for (const { src, volume } of pendingSFX) {
+    let sfx = sfxCache.get(src)
+    if (!sfx) {
+      sfx = new Howl({ src: [src], html5: true, volume })
+      sfxCache.set(src, sfx)
+    }
+    sfx.volume(volume)
+    sfx.play()
+  }
+  pendingSFX.length = 0
+}
+
 export function useAudio() {
   /** 初始化并播放 BGM */
   function playBGM(src: string, volume = 0.3): void {
@@ -26,6 +43,11 @@ export function useAudio() {
     })
     bgm.play()
     bgmPlaying.value = true
+
+    // BGM 已经开始播了 → 补播之前排队的音效
+    // 桌面端：pointerdown 时 BGM 就播起来了，这里立即 flush
+    // 移动端：touchend 时 BGM 才真正播起来，这里补播擦火声等
+    flushPendingSFX()
   }
 
   /** 暂停 BGM */
@@ -61,14 +83,16 @@ export function useAudio() {
   function playSFX(src: string, volume = 0.5): void {
     if (!sfxEnabled.value) return
 
-    // 缓存复用
+    // BGM 还没真正播起来 → 音效排队（移动端首次拖拽时的情况）
+    if (!isBGMPlaying()) {
+      pendingSFX.push({ src, volume })
+      return
+    }
+
+    // BGM 已经在播 → 音效即时播放
     let sfx = sfxCache.get(src)
     if (!sfx) {
-      sfx = new Howl({
-        src: [src],
-        html5: true,
-        volume,
-      })
+      sfx = new Howl({ src: [src], html5: true, volume })
       sfxCache.set(src, sfx)
     }
     sfx.volume(volume)
@@ -93,6 +117,11 @@ export function useAudio() {
     return !muted
   }
 
+  /** 检查 BGM 是否真正在播放 */
+  function isBGMPlaying(): boolean {
+    return bgm?.playing() ?? false
+  }
+
   /** 销毁所有音频 */
   function destroyAll(): void {
     bgm?.stop()
@@ -103,6 +132,7 @@ export function useAudio() {
       sfx.unload()
     }
     sfxCache.clear()
+    pendingSFX.length = 0
   }
 
   return {
@@ -116,6 +146,7 @@ export function useAudio() {
     playSFX,
     playVoice,
     toggleMute,
+    isBGMPlaying,
     destroyAll,
   }
 }

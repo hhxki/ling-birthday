@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A birthday memorial website for streamer "由川伶/Ling" — an interactive, multi-stage animated experience with match-striking, wish-collecting fireflies, candle-blowing via microphone, a horizontal timeline gallery, and a credits/ending screen.
 
-**Tech stack**: Vue 3 (SFC `<script setup>`) + TypeScript + Vite + PixiJS v8 + GSAP 3 + Howler.js + TailwindCSS 4
+**Tech stack**: Vue 3 (SFC `<script setup>`) + TypeScript + Vite + PixiJS v8 + GSAP 3 + Howler.js + canvas-confetti + TailwindCSS 4
 
 The original design document is at `PLAN.md` — read it for full visual direction, color system, and stage-by-stage UX intent.
 
@@ -60,9 +60,9 @@ z-index: 0      Background
 loading → match → (wishes merged into match) → blow-candle → timeline → ending
 ```
 
-The **active** `STAGE_ORDER` array only contains `['match', 'blow-candle', 'ending']` — these are the three stages wired in `App.vue`. The initial state is `'match'` (loading is skipped; `reset()` also goes back to `'match'`). `nextStage()` iterates through the `STAGE_ORDER` array; it will not transition to loading or timeline.
+The **active** `STAGE_ORDER` array only contains `['match', 'ending']` — these are the two stages currently wired in `App.vue`. The initial state is `'match'` (loading is skipped; `reset()` also goes back to `'match'`). `nextStage()` iterates through the `STAGE_ORDER` array; it will not transition to loading, blow-candle, or timeline.
 
-Current active stages in `App.vue`: `match`, `blow-candle`, `ending`. Timeline is implemented but commented out (`<!-- 暂搁置 -->`). The wishes stage was merged into the match stage — a single `MatchScene` handles both match-striking and firefly collection. Loading is implemented (`StageLoading.vue`) but not wired into App.vue.
+Current active stages in `App.vue`: `match`, `ending`. Blow-candle is fully implemented (`StageBlowCandle.vue` + `CandleScene.ts`) but removed from `STAGE_ORDER`. Timeline is implemented but commented out (`<!-- 暂搁置 -->`). The wishes stage was merged into the match stage — a single `MatchScene` handles both match-striking and firefly collection. Loading is implemented (`StageLoading.vue`) but not wired into App.vue.
 
 Key state fields: `currentStage`, `wishesCollected`, `totalWishes`, `candleLit`, `isBlown`, `micStatus`.
 
@@ -87,17 +87,27 @@ Scenes use callback properties (`onIgnited`, `onParticleCollected`, `onAllCollec
 
 ### Audio
 
-`src/composables/useAudio.ts` — Howler.js wrapper. BGM uses `html5: true` for streaming. Voice files are loaded lazily per-card, not cached.
+`src/composables/useAudio.ts` — Howler.js wrapper. BGM uses `html5: true` for streaming. Voice files are loaded lazily per-card, not cached. `AUDIO_CONFIG.duckBgmVolume` defines the BGM volume level when voice/video is actively playing (BGM is lowered but not stopped).
+
+**BGM autoplay workaround** (`App.vue`): browsers block autoplay of audio before user interaction. `App.vue` binds `tryStartBGM()` to `document.addEventListener('pointerdown', …, { once: true })` (and a `click` fallback) — BGM starts on the first pointer interaction anywhere on the page.
+
+**Mute toggle**: a fixed mute button (top-right, `z-[150]`) in `App.vue` toggles `Howler.volume(0)` / `Howler.volume(1)`. The mute icon URLs are hardcoded external links from `webstatic.mihoyo.com` — they are **not** managed via the CDN asset system.
 
 **Microphone (two implementations — know which is which):**
 - `src/game/utils/audioAnalyzer.ts` — **active**: standalone (non-Vue) class used by `CandleScene` for mic blow detection. Uses raw `AudioContext` + `requestAnimationFrame` loop.
 - `src/composables/useMicrophone.ts` — **unused**: Vue composable wrapping the same logic. Exists as an alternative but no stage currently imports it. If unifying mic logic, prefer this file's approach (it has the `BLOW_CONFIG.micTimeout` fallback pattern).
 
+### Asset loading
+
+`src/composables/useAssetLoader.ts` — Vue composable wrapping PixiJS v8 `Assets.load()` with progress tracking. Exposes `loadAssets(assets[])` for blocking preloads and `loadInBackground(assets[])` for silent background loads (failures are swallowed). Progress is a reactive `ref<number>` (0–100).
+
 ### Data contracts
 
-`src/data/blessings.ts` and `src/data/timeline.ts` hold the content. Modify these to update fan blessings and timeline entries without changing component code. Types are in `src/types/index.ts`.
+`src/data/blessings.ts`, `src/data/timeline.ts`, and `src/data/audioAssets.ts` hold the content. Modify these to update fan blessings, timeline entries, and audio files without changing component code. Types are in `src/types/index.ts`.
 
-**Blessing fields**: `id` (unique key, e.g. `'wish_001'` — used for dedup in `shownBlessings`), `user` (display name), `text`, `avatarUrl?`, `audioUrl?`. All asset URLs (avatar, audio) must use the `asset()` helper from `config.ts` for CDN/local switching. **Heads-up**: `FireflyState.blessingFrom` stores `Blessing.id`, not `Blessing.user` — despite its name, it is an ID that gets resolved via `blessingsData.find(b => b.id === blessingFrom)` in the Vue component.
+**Audio assets** (`src/data/audioAssets.ts`): Exports `BGM` (background music — main, candle, ending), `SFX` (one-shot sound effects — matchStrike, fireflyCollect, allCollected, candleBlow, cardOpen, cardClose, buttonClick), and convenience aggregates `ALL_BGM` / `ALL_SFX` for batch preloading.
+
+**Blessing fields**: `id` (unique key, e.g. `'wish_001'` — used for dedup in `shownBlessings`), `user` (display name), `text`, `avatarUrl?`, `audioUrl?`, `videoUrl?`. All asset URLs (avatar, audio, video) must use the `asset()` helper from `config.ts` for CDN/local switching. **Heads-up**: `FireflyState.blessingFrom` stores `Blessing.id`, not `Blessing.user` — despite its name, it is an ID that gets resolved via `blessingsData.find(b => b.id === blessingFrom)` in the Vue component.
 
 ### Key configuration
 
@@ -113,9 +123,9 @@ All tunable constants are in `src/data/config.ts`:
 |-------|--------|-------|
 | Loading | Implemented but not wired | `StageLoading.vue` + `LoadingScreen.vue` |
 | Match + Wishes | **Active** (merged) | `StageMatch.vue` + `MatchScene.ts` — match striking, firefly burst, particle collection, greeting cards |
-| Blow Candle | **Active** | `StageBlowCandle.vue` + `CandleScene.ts` — mic blow detection + manual fallback button |
+| Blow Candle | Shelved | `StageBlowCandle.vue` + `CandleScene.ts` — implemented (mic blow detection + manual fallback) but removed from STAGE_ORDER |
 | Timeline | Shelved | `StageTimeline.vue` — CSS scroll-snap + GSAP ScrollTrigger horizontal gallery, commented out in App.vue |
-| Ending | **Active** | `StageEnding.vue` — credits + "再来一次" restart button |
+| Ending | **Active** | `StageEnding.vue` — credits + confetti burst (`canvas-confetti`) + "再来一次" restart button |
 
 **Before production**, remove from `StageMatch.vue`:
 - The `showDebugCard` / `debugBlessing` reactive and the always-visible debug `<GreetingCard>`
@@ -147,3 +157,4 @@ Do not reference or import these files in new work without confirming intent.
 - **FireParticle**: `blendMode = 'add'` for glow effect, `eventMode = 'static'` for clickability, custom rectangular `hitArea` for larger touch targets.
 - **`(p as any)._settled`**: particles only start floating after their settle animation completes; checked before `update()`.
 - **GSAP Timeline in Ending**: `StageEnding.vue` creates a GSAP timeline in `onMounted` for entrance animations — it does NOT call `killTweensOf` on unmount since the elements are DOM nodes destroyed with the component. The restart button animates via `gsap.to('.ending-content', …)` and calls `reset()` on complete.
+- **Confetti (`canvas-confetti`)**: `StageEnding.vue` creates a temporary `<canvas>` element (`position: fixed; pointer-events: none; z-index: 9999`), fires confetti bursts via `confetti.create(canvas, …)`, then removes the canvas after ~6 seconds. The canvas is created per-mount (not shared/reused) since the component is destroyed on restart.

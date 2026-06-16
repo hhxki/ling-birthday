@@ -9,6 +9,22 @@ import { CARD_CONFIG, AUDIO_CONFIG } from '../data/config'
 const props = defineProps<{ blessing: Blessing }>()
 const emit = defineEmits<{ close: [] }>()
 
+// ---- 响应式视口（移动端适配） ----
+const vpWidth = ref(window.innerWidth)
+const vpHeight = ref(window.innerHeight)
+function onViewportResize() { vpWidth.value = window.innerWidth; vpHeight.value = window.innerHeight }
+onMounted(() => window.addEventListener('resize', onViewportResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onViewportResize))
+
+/** 卡片整体缩放比例（基于 780px 设计宽度, 仅窄屏缩放） */
+const cardScale = computed(() => Math.min(1, (vpWidth.value - 32) / 780))
+/** 吉祥物缩放比例 */
+const mascotScale = computed(() => Math.max(0.4, cardScale.value))
+/** 卡片主体宽度 */
+const cardBodyWidth = computed(() => Math.min(560, vpWidth.value - 48))
+/** --lw 桌面端固定 680, 窄屏等比缩小 */
+const lwValue = computed(() => cardScale.value >= 1 ? '680px' : `${Math.round(680 * cardScale.value)}px`)
+
 const { playVoice, duckBGM, restoreBGM } = useAudio()
 const isPlaying = ref(false)
 const audioAvailable = ref(false)
@@ -307,14 +323,14 @@ onBeforeUnmount(() => {
 <template>
   <Transition name="card">
     <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] opacity-0" style="backdrop-filter: blur(0px)">
-      <div class="relative w-[780px] h-[520px]">
+      <div class="relative mx-auto" :style="{ width: Math.min(780, vpWidth - 32) + 'px', height: Math.max(520 * cardScale, 400) + 'px' }">
         <!-- wrapper 负责定位 + GSAP 缩放，border-image 在内层以 1:1 渲染避免切图接缝闪烁 -->
-        <div ref="letterRef" class="absolute left-[60px] top-[30px] z-10 will-change-transform">
+        <div ref="letterRef" class="absolute z-10 will-change-transform" :style="{ left: (60 * cardScale) + 'px', top: (30 * cardScale) + 'px' }">
           <div
-            class="w-[560px] min-h-[390px] box-border backface-hidden [transform:translateZ(0)]"
-            :style="{ ...frameStyle, '--lw': '680px' }"
+            class="box-border backface-hidden [transform:translateZ(0)]"
+            :style="{ ...frameStyle, '--lw': lwValue, width: cardBodyWidth + 'px', minHeight: (390 * mascotScale) + 'px' }"
           >
-            <div class="py-4 pr-[130px] pl-11">
+            <div :style="{ paddingTop: '1rem', paddingBottom: '1rem', paddingRight: (130 * mascotScale) + 'px', paddingLeft: (44 * mascotScale) + 'px' }">
             <div ref="avatarRowRef" class="flex items-center gap-[14px] mb-2">
               <div class="w-14 h-14 rounded-full border-[3px] border-[#ffccd8] bg-[#fff0f3] flex items-center justify-center relative shrink-0 overflow-hidden shadow-[inset_0_2px_4px_rgba(255,123,159,0.1)]">
                 <img v-if="blessing.avatarUrl" :src="blessing.avatarUrl" alt="" class="w-full h-full object-cover" />
@@ -341,7 +357,7 @@ onBeforeUnmount(() => {
               <!-- left: circular play button + label -->
               <div class="flex items-center gap-3">
                 <button
-                  class="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
+                  class="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
                   @click="handlePlayVoice"
                 >
                   <svg v-if="!isPlaying" class="h-5 w-5 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -372,7 +388,7 @@ onBeforeUnmount(() => {
             >
               <div class="flex items-center gap-3">
                 <button
-                  class="w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
+                  class="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer bg-[var(--color-ling-pink)] hover:bg-[#ff5c87]"
                   @click="handlePlayVideo"
                 >
                   <svg class="h-5 w-5 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -392,15 +408,16 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <!-- mascot 锚定贺卡右下角，高度变化时自动跟随 -->
-          <div ref="mascotRef" class="absolute left-[420px] bottom-[-163px] w-[280px] h-[430px] z-20 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] pointer-events-none">
+          <!-- mascot 锚定贺卡右下角，高度变化时自动跟随；窄屏隐藏 -->
+          <div v-if="mascotScale > 0.5" ref="mascotRef" class="absolute z-20 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] pointer-events-none" :style="{ left: (420 * mascotScale) + 'px', bottom: (-163 * mascotScale) + 'px', width: (280 * mascotScale) + 'px', height: (430 * mascotScale) + 'px' }">
             <img :src="CARD_CONFIG.mascotUrl" alt="mascot" class="w-full h-full object-contain" />
           </div>
         </div>
         </div>
         <button
           ref="closeBtnRef"
-          class="absolute right-[215px] top-[70px] w-7 h-7 rounded-full bg-[var(--color-ling-pink)] text-white text-sm font-bold border-none cursor-pointer shadow-[0_2px_6px_rgba(255,123,159,0.3)] z-30 transition-colors duration-200 hover:bg-[#ff5c87]"
+          class="absolute rounded-full bg-[var(--color-ling-pink)] text-white font-bold border-none cursor-pointer shadow-[0_2px_6px_rgba(255,123,159,0.3)] z-30 transition-colors duration-200 hover:bg-[#ff5c87] flex items-center justify-center"
+          :style="{ right: (215 * cardScale) + 'px', top: (70 * cardScale) + 'px', width: cardScale >= 1 ? '28px' : '44px', height: cardScale >= 1 ? '28px' : '44px', fontSize: (14 * cardScale) + 'px' }"
           @click="handleClose"
           aria-label="关闭"
         >✕</button>
@@ -410,12 +427,13 @@ onBeforeUnmount(() => {
   <!-- 视频播放弹窗 -->
   <Teleport to="body">
     <div v-if="showVideoOverlay" class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
-      <div ref="videoOverlayRef" class="relative pointer-events-auto">
+      <div ref="videoOverlayRef" class="relative pointer-events-auto max-w-[95vw] max-h-[90vh]">
         <video
           ref="videoRef"
           controls
           playsinline
           preload="auto"
+          class="max-w-full max-h-[85vh]"
           style="display: block; background: #000;"
           @ended="handleCloseVideo"
         />

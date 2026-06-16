@@ -27,7 +27,7 @@ export class FireParticle extends Container {
     this.addChild(this.sprite)
 
     // 扩大可点击区域
-    this.hitArea = new Rectangle(-30, -30, 60, 60)
+    this.hitArea = new Rectangle(-40, -40, 80, 80)
 
     this.x = state.x
     this.y = state.y
