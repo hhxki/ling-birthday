@@ -80,7 +80,7 @@ onUnmounted(() => {
 
 <template>
     <!-- 静音按钮 -->
-    <button class="fixed top-6 right-6 z-[150] cursor-pointer hover:scale-105 transition-transform w-11 h-11 hidden sm:flex items-center justify-center" @click="toggleMute">
+    <button class="fixed z-[150] cursor-pointer hover:scale-105 transition-transform w-11 h-11 hidden sm:flex items-center justify-center" style="top: calc(1.5rem + var(--safe-inset-top)); right: calc(1.5rem + var(--safe-inset-right));" @click="toggleMute">
       <img :src="isMuted ? AUDIO_OFF_ICON : AUDIO_ON_ICON" alt="静音" class="w-9 h-9" />
     </button>
     <StageMatch v-if="state.currentStage === 'match'" key="match" />

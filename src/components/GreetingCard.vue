@@ -32,10 +32,6 @@ const mascotScale = computed(() => {
 const cardW = computed(() => Math.round(560 * cardScale.value))
 /** 三宫格 --lw */
 const lwPx = computed(() => Math.round(680 * cardScale.value))
-/** 容器高度 — 桌面 520，移动端按比例 */
-const containerH = computed(() => Math.round(520 * cardScale.value))
-/** 移动端向上微调：桌面 0，手机端负值把卡片往上推 */
-const mobileNudge = computed(() => Math.round(-300 * (1 - cardScale.value)))
 /** 卡片左偏移 — 手机端微调右偏，但不超出容器 */
 const cardLeft = computed(() => Math.round(40 * cardScale.value))
 /** 内容区左侧内边距 — 手机端略加宽，防文字溢出 */
@@ -49,12 +45,19 @@ const contentPaddingRight = computed(() => {
   return Math.round(65 * cardScale.value)
 })
 /** 关闭按钮尺寸 — 手机端不小于 28px 保证可点 */
-const closeBtnSize = computed(() => Math.max(28, Math.round(28 * cardScale.value)))
-/** 关闭按钮右偏移 */
-const closeBtnRight = computed(() => Math.round(56 * cardScale.value))
-/** 关闭按钮上偏移 */
-const closeBtnTop = computed(() => Math.round(44 * cardScale.value))
-/** 关闭按钮字号 */
+/** 关闭按钮 — 桌面 / 手机分别调校 */
+const closeBtnSize = computed(() => {
+  if (!isMobileLayout.value) return Math.round(28 * cardScale.value)  // 桌面
+  return Math.max(20, Math.round(28 * cardScale.value))                // 手机
+})
+const closeBtnRight = computed(() => {
+  if (!isMobileLayout.value) return Math.round(235 * cardScale.value)   // 桌面
+  return Math.round(93 * cardScale.value)                              // 手机
+})
+const closeBtnTop = computed(() => {
+  if (!isMobileLayout.value) return Math.round(40 * cardScale.value)   // 桌面
+  return Math.round(45 * cardScale.value)                              // 手机
+})
 const closeBtnFontSize = computed(() => Math.round(14 * cardScale.value))
 
 const { playVoice, duckBGM, restoreBGM } = useAudio()
@@ -239,10 +242,10 @@ onBeforeUnmount(() => { stopProgress(); enterTl?.kill(); videoRef.value?.pause()
 <template>
   <Transition name="card">
     <div ref="overlayRef" class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(8,12,24,0.45)] opacity-0" style="backdrop-filter: blur(0px)">
-      <!-- 外层容器：桌面高度 520，手机端负 margin 上推 -->
-      <div class="relative mx-auto" :style="{ width: Math.min(780, vpWidth - 32) + 'px', height: containerH + 'px', marginTop: mobileNudge + 'px' }">
-        <!-- 卡片本体 — top 控制垂直位置，越小越靠上 -->
-        <div ref="letterRef" class="absolute z-10 will-change-transform" :style="{ left: cardLeft + 'px', top: Math.round(10 * cardScale) + 'px' }">
+      <!-- 外层容器：自适应内容高度，flex 居中 -->
+      <div class="relative mx-auto" :style="{ width: Math.min(780, vpWidth - 32) + 'px' }">
+        <!-- 卡片本体：relative 自然撑开容器高度，flex 居中 -->
+        <div ref="letterRef" class="relative z-10 will-change-transform" :style="{ marginLeft: cardLeft + 'px' }">
           <div class="box-border backface-hidden [transform:translateZ(0)]" :style="frameStyle">
             <div :style="{ padding: '1rem', paddingRight: contentPaddingRight + 'px', paddingLeft: contentPaddingLeft + 'px' }">
               <div ref="avatarRowRef" class="flex items-center gap-[14px] mb-2">

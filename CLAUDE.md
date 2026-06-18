@@ -27,6 +27,24 @@ npx vue-tsc -b    # Type-check only, no build (tsconfig.json uses project refere
 
 No test suite is configured. The README.md is Vite template boilerplate — ignore it.
 
+`vite.config.ts` is minimal — just `vue()` and `tailwindcss()` plugins. No custom resolve aliases, no base path overrides.
+
+`index.html` sets `lang="zh-CN"`, uses `/ling.ico` as favicon, and mounts via `<div id="app">` with `<script type="module" src="/src/main.ts">`.
+
+### CSS / design tokens
+
+Global styles are in [src/style.css](src/style.css). Key decisions:
+- `body` has `overflow: hidden` (prevents scrollbars — the site is fullscreen), `background: #0b0f19` (deep night blue), and `touch-action: manipulation` (eliminates mobile 300ms tap delay).
+- `::-webkit-scrollbar` is hidden globally (`width: 0; height: 0`).
+- Design system CSS custom properties: `--color-ling-pink: #ff7b9f`, `--color-amber-gold: #ffb03a`, `--color-clear-blue: #63b3ed` — these match the PLAN.md color matrix and should be used over hardcoded hex values in new components.
+- Safe-area CSS variables (`--safe-inset-top` / `--safe-inset-bottom` / `--safe-inset-left` / `--safe-inset-right`) are defined from `env(safe-area-inset-*)` for Android/iOS immersive mode. Utility classes `.pt-safe`, `.pb-safe`, `.mt-safe`, `.mb-safe` are available. Fixed-position UI elements should account for these insets so they aren't hidden behind system bars.
+
+### Immersive mode (Android / iOS PWA)
+
+`index.html` uses `viewport-fit=cover`, apple-mobile-web-app meta tags, and links to `/public/manifest.json` (`display: fullscreen`). This lets the PixiJS canvas extend edge-to-edge behind system bars.
+
+`src/composables/useFullscreen.ts` wraps the Fullscreen API (`requestFullscreen()`, `resetFullscreenFlag()`). The match-strike gesture in `StageMatch.vue` calls `requestFullscreen()` on ignition — this hides the Android status/nav bars on supported browsers. The flag resets on stage unmount so "再来一次" re-requests fullscreen.
+
 ## CDN / asset mode
 
 Set `VITE_USE_CDN` in `.env`:
@@ -64,7 +82,7 @@ The **active** `STAGE_ORDER` array only contains `['match', 'ending']` — these
 
 Current active stages in `App.vue`: `match`, `ending`. Blow-candle is fully implemented (`StageBlowCandle.vue` + `CandleScene.ts`) but removed from `STAGE_ORDER`. Timeline is implemented but commented out (`<!-- 暂搁置 -->`). The wishes stage was merged into the match stage — a single `MatchScene` handles both match-striking and firefly collection. Loading is implemented (`StageLoading.vue`) but not wired into App.vue.
 
-Key state fields: `currentStage`, `wishesCollected`, `totalWishes`, `candleLit`, `isBlown`, `micStatus`.
+Key state fields: `currentStage`, `wishesCollected`, `totalWishes`, `candleLit`, `isBlown`, `micStatus` (`'idle' | 'requesting' | 'ready' | 'denied' | 'error'`).
 
 The state is returned as `readonly(state)` — mutations go through action functions only (`collectWish()`, `nextStage()`, `reset()`, etc.). The `GameStage` type in `src/types/index.ts` includes `'loading'`, `'wishes'`, and `'timeline'` even though they aren't in the current `STAGE_ORDER` — the types accommodate future expansion.
 
@@ -139,9 +157,7 @@ All tunable constants are in `src/data/config.ts`:
 | Timeline | Shelved | `StageTimeline.vue` — CSS scroll-snap + GSAP ScrollTrigger horizontal gallery, commented out in App.vue |
 | Ending | **Active** | `StageEnding.vue` — credits + confetti burst (`canvas-confetti`) + "再来一次" restart button |
 
-**Before production**, remove from `StageMatch.vue`:
-- The `showDebugCard` / `debugBlessing` reactive and the always-visible debug `<GreetingCard>`
-- The debug panel (bottom-left overlay with sender/text inputs)
+Debug UI has been removed from `StageMatch.vue`. If adding debug overlays during development, clean them up before committing.
 
 ## Orphan / legacy files
 

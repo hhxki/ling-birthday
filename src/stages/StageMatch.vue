@@ -6,10 +6,11 @@ import gsap from 'gsap'
 import confetti from 'canvas-confetti'
 import { useGameState } from '../composables/useGameState'
 import { useAudio } from '../composables/useAudio'
+import { requestFullscreen } from '../composables/useFullscreen'
 import { gameApp } from '../game/GameApp'
 import { MatchScene } from '../game/scenes/MatchScene'
 import { useAssetLoader } from '../composables/useAssetLoader'
-import { CRITICAL_ASSETS, AUDIO_CONFIG } from '../data/config'
+import { CRITICAL_ASSETS, AUDIO_CONFIG, isMobile } from '../data/config'
 import { SFX } from '../data/audioAssets'
 import GreetingCard from '../components/GreetingCard.vue'
 import { blessingsData, totalBlessings } from '../data/blessings'
@@ -33,6 +34,12 @@ function updateProgressBarWidth() {
   if (progressTrackEl.value) {
     progressBarWidth.value = progressTrackEl.value.clientWidth
   }
+}
+
+/** 移动端全屏：每次用户触摸都尝试，直到进入全屏 */
+function tryFullscreen() {
+  if (!isMobile()) return
+  requestFullscreen()
 }
 
 function getTex(alias: string): Texture {
@@ -63,8 +70,11 @@ onMounted(async () => {
   const w = window.innerWidth, h = window.innerHeight
   scene.init(w, h)
 
-  // 火柴点燃 → 火花爆开时显示计数器（与第二个界面同步）
-  scene.onIgnited = () => { playSFX(SFX.matchStrike, AUDIO_CONFIG.sfxVolume); setTimeout(() => { showCounter.value = true }, 1300) }
+  // 火柴点燃 → 显示计数器
+  scene.onIgnited = () => {
+    playSFX(SFX.matchStrike, AUDIO_CONFIG.sfxVolume)
+    setTimeout(() => { showCounter.value = true }, 1300)
+  }
 
   // 萤火虫收集 → 弹贺卡
   scene.onParticleCollected = (blessingFrom: string) => {
@@ -121,9 +131,17 @@ onMounted(async () => {
   gameApp.setScene(scene)
   gameApp.app.canvas.style.pointerEvents = 'auto'
   gameApp.app.ticker.add(updateFireflies)
+
+  // 移动端全屏：touchend / pointerdown 都尝试，跟 BGM 同策略
+  if (isMobile()) {
+    document.addEventListener('touchend', tryFullscreen)
+    document.addEventListener('pointerdown', tryFullscreen)
+  }
 })
 
 onUnmounted(() => {
+  document.removeEventListener('touchend', tryFullscreen)
+  document.removeEventListener('pointerdown', tryFullscreen)
   gameApp.app.ticker.remove(updateFireflies)
   gameApp.app.canvas.style.pointerEvents = 'none'
   scene?.destroyScene()
@@ -185,7 +203,7 @@ watch(showCounter, async (visible) => {
 <template>
   <div ref="canvasContainer" class="fixed inset-0 z-5">
     <!-- 汇聚心意 进度气泡（test.html 风格） -->
-    <div v-if="showCounter" ref="counterEl" class="heart-counter-box fixed top-6 left-4 sm:left-6 z-60 w-[calc(100vw-32px)] sm:w-[238px] bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-4 py-3 flex flex-col gap-2.5 select-none">
+    <div v-if="showCounter" ref="counterEl" class="heart-counter-box fixed z-60 w-[calc(100vw-32px)] sm:w-[238px] bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-4 py-3 flex flex-col gap-2.5 select-none" style="top: calc(1.5rem + var(--safe-inset-top)); left: calc(1rem + var(--safe-inset-left));">
       <!-- 角落星星 -->
       <span class="star-sparkle absolute -top-2 -left-1.5 text-amber-300 text-sm">✦</span>
       <span class="star-sparkle absolute -bottom-1.5 -right-0.5 text-sky-400 text-xs" style="animation-delay: 0.5s;">✦</span>
@@ -226,7 +244,7 @@ watch(showCounter, async (visible) => {
 
     <!-- 麦克风提示（test2.html 风格） -->
     <Transition name="fade">
-      <div v-if="state.micStatus === 'requesting'" class="candle-prompt-box fixed bottom-15 left-1/2 -translate-x-1/2 z-60 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-5 py-3 select-none max-w-[calc(100vw-2rem)]">
+      <div v-if="state.micStatus === 'requesting'" class="candle-prompt-box fixed left-1/2 -translate-x-1/2 z-60 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/95 backdrop-blur-md border-2 border-[#ff7b9f] rounded-2xl px-5 py-3 select-none max-w-[calc(100vw-2rem)]" style="bottom: calc(3.75rem + var(--safe-inset-bottom));">
         <!-- 角落星星 -->
         <span class="star-sparkle absolute -top-2 -right-1 text-amber-300 text-base">✦</span>
         <span class="star-sparkle absolute -bottom-2 -left-1 text-sky-400 text-xs" style="animation-delay: 0.7s;">✦</span>
@@ -252,7 +270,7 @@ watch(showCounter, async (visible) => {
     </Transition>
     <!-- 手动吹灭按钮 -->
     <Transition name="fade">
-      <button v-if="showFallbackBtn" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-60 flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 rounded-3xl border-2 border-[#ffb03a]/50 bg-[#1a1210]/90 backdrop-blur-md text-[#ffb03a] text-[13px] sm:text-[15px] font-semibold tracking-wide cursor-pointer transition-all duration-300 shadow-[0_0_20px_rgba(255,176,58,0.15),0_0_40px_rgba(255,176,58,0.06)] hover:bg-[#241815] hover:border-[#ffb03a]/70 hover:shadow-[0_0_32px_rgba(255,176,58,0.3),0_0_60px_rgba(255,176,58,0.12)] active:scale-95 max-w-[calc(100vw-2rem)]" @click="manualBlow">
+      <button v-if="showFallbackBtn" class="fixed left-1/2 -translate-x-1/2 z-60 flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 rounded-3xl border-2 border-[#ffb03a]/50 bg-[#1a1210]/90 backdrop-blur-md text-[#ffb03a] text-[13px] sm:text-[15px] font-semibold tracking-wide cursor-pointer transition-all duration-300 shadow-[0_0_20px_rgba(255,176,58,0.15),0_0_40px_rgba(255,176,58,0.06)] hover:bg-[#241815] hover:border-[#ffb03a]/70 hover:shadow-[0_0_32px_rgba(255,176,58,0.3),0_0_60px_rgba(255,176,58,0.12)] active:scale-95 max-w-[calc(100vw-2rem)]" style="bottom: calc(5rem + var(--safe-inset-bottom));" @click="manualBlow">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 4C12 4 10 8 10 12C10 12 8 14 6 16C8 18 10 20 10 20C10 20 12 24 16 24S22 20 22 20C22 20 24 18 26 16C24 14 22 12 22 12C22 8 20 4 16 4Z" stroke="currentColor" stroke-width="1.5" /><path d="M16 14V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
         <span>用手扇风（点击吹灭）</span>
       </button>

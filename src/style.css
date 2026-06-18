@@ -5,12 +5,22 @@
   --color-ling-pink: #ff7b9f;
   --color-amber-gold: #ffb03a;
   --color-clear-blue: #63b3ed;
+
+  /* 安全区 insets — 沉浸式适配 Android 状态栏/导航栏 + iOS 刘海屏 */
+  --safe-inset-top: env(safe-area-inset-top, 0px);
+  --safe-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-inset-left: env(safe-area-inset-left, 0px);
+  --safe-inset-right: env(safe-area-inset-right, 0px);
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  background: #0b0f19; /* Android 全屏时状态栏区域取 html 背景色 */
 }
 
 body {
@@ -21,7 +31,14 @@ body {
   font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   touch-action: manipulation; /* 消除移动端 300ms 点击延迟 */
+  /* 沉浸式：Canvas 延伸到安全区，body 不加 padding */
 }
+
+/* 安全区工具类 — 沉浸式适配 Android/iOS 系统栏 */
+.pt-safe { padding-top: var(--safe-inset-top); }
+.pb-safe { padding-bottom: var(--safe-inset-bottom); }
+.mt-safe { margin-top: var(--safe-inset-top); }
+.mb-safe { margin-bottom: var(--safe-inset-bottom); }
 
 img {
   display: block;

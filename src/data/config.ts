@@ -80,7 +80,7 @@ export const MATCH_CONFIG = {
   /** 火柴盒纹理缩放倍数（固定值，不随屏幕宽度变化） */
   matchboxScale: 1.0,
   /** 火柴盒水平位置（屏幕宽度比例，0=最左 1=最右） */
-  matchboxX: 0.4,
+  matchboxX: 0.45,
   /** 火柴盒垂直位置（屏幕高度比例，0=最顶 1=最底） */
   matchboxY: 0.5,
   /** 火柴盒旋转角度（弧度，负数=逆时针倾斜） */
@@ -217,7 +217,7 @@ export const CARD_CONFIG = {
 }
 export const BLOW_CONFIG = {
   /** 分贝阈值 (RMS, 0~1)，越小越灵敏 */
-  dbThreshold: 0.06,
+  dbThreshold: 0.03,
   /** 持续超过阈值的时间 (ms) */
   sustainDuration: 150,
   /** 麦克风超时 (ms) — 超过则显示降级按钮 */
