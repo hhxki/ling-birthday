@@ -351,6 +351,7 @@ export class MatchScene extends Container {
     this.analyzer.stop()
     gsap.killTweensOf(this.match); gsap.killTweensOf(this.flame); gsap.killTweensOf(this.flameBlur)
     gsap.killTweensOf(this.hintText); gsap.killTweensOf(this.matchBg); gsap.killTweensOf(this.roomDark); gsap.killTweensOf(this.roomBright)
+    for (const p of this.fireflies) { gsap.killTweensOf(p); if (p.parent) p.parent.removeChild(p); p.destroy() }
     this.fireflies = []
     for (const p of this.candleParticles) { gsap.killTweensOf(p); if (p.parent) p.parent.removeChild(p); p.destroy() }
     this.candleParticles = []

@@ -9,7 +9,7 @@ import { useAudio } from '../composables/useAudio'
 import { gameApp } from '../game/GameApp'
 import { MatchScene } from '../game/scenes/MatchScene'
 import { useAssetLoader } from '../composables/useAssetLoader'
-import { CRITICAL_ASSETS, AUDIO_CONFIG, BLOW_CONFIG } from '../data/config'
+import { CRITICAL_ASSETS, AUDIO_CONFIG } from '../data/config'
 import { SFX } from '../data/audioAssets'
 import GreetingCard from '../components/GreetingCard.vue'
 import { blessingsData, totalBlessings } from '../data/blessings'
@@ -19,12 +19,21 @@ const { state, collectWish, nextStage, setTotalWishes, setMicStatus } = useGameS
 const { playSFX } = useAudio()
 const canvasContainer = ref<HTMLDivElement>()
 
+
 let scene: MatchScene | null = null
 const activeCard = ref<Blessing | null>(null)
 const showCounter = ref(false)
 const counterEl = ref<HTMLDivElement>()
+const progressTrackEl = ref<HTMLDivElement>()
+const progressBarWidth = ref(206) // 进度条实际像素宽度，默认桌面值
 const showFallbackBtn = ref(false)
-let micTimeout: ReturnType<typeof setTimeout> | null = null
+
+/** 更新进度条宽度（背景渐变需要匹配实际像素宽度） */
+function updateProgressBarWidth() {
+  if (progressTrackEl.value) {
+    progressBarWidth.value = progressTrackEl.value.clientWidth
+  }
+}
 
 function getTex(alias: string): Texture {
   try {
@@ -115,7 +124,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (micTimeout) clearTimeout(micTimeout)
   gameApp.app.ticker.remove(updateFireflies)
   gameApp.app.canvas.style.pointerEvents = 'none'
   scene?.destroyScene()
@@ -123,11 +131,7 @@ onUnmounted(() => {
 
 async function startCandlePhase() {
   setMicStatus('requesting')
-  micTimeout = setTimeout(() => {
-    if (state.micStatus === 'requesting') { showFallbackBtn.value = true; setMicStatus('denied') }
-  }, BLOW_CONFIG.micTimeout)
   await scene?.startCandlePhase()
-  if (micTimeout) clearTimeout(micTimeout)
 }
 
 function manualBlow() { showFallbackBtn.value = false; scene?.blowOut() }
@@ -169,6 +173,12 @@ watch(showCounter, async (visible) => {
     { opacity: 0, y: -10, scale: 0.9 },
     { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.4)' },
   )
+  // 动态计算进度条宽度，渐变 background-size 匹配实际像素
+  updateProgressBarWidth()
+  if (progressTrackEl.value) {
+    const ro = new ResizeObserver(() => updateProgressBarWidth())
+    ro.observe(progressTrackEl.value)
+  }
 })
 </script>
 
@@ -196,11 +206,10 @@ watch(showCounter, async (visible) => {
       </div>
       <!-- 进度条 -->
       <div class="w-full relative">
-        <div class="w-full h-2.5 bg-[#fff0f3] border border-pink-100/80 rounded-full overflow-hidden p-[1.5px] relative flex items-center" style="box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);">
+        <div ref="progressTrackEl" class="w-full h-2.5 bg-[#fff0f3] border border-pink-100/80 rounded-full overflow-hidden p-[1.5px] relative flex items-center" style="box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);">
           <div
             class="progress-fill h-full rounded-full relative transition-[width] duration-500 ease-out"
-            style="background-image: linear-gradient(to right, #38bdf8, #ff7b9f, #ff4b5c); background-size: 206px 100%; background-repeat: no-repeat;"
-            :style="{ width: (state.wishesCollected / totalBlessings) * 100 + '%' }"
+            :style="{ width: (state.wishesCollected / totalBlessings) * 100 + '%', backgroundImage: 'linear-gradient(to right, #38bdf8, #ff7b9f, #ff4b5c)', backgroundSize: progressBarWidth + 'px 100%', backgroundRepeat: 'no-repeat' }"
           >
             <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-white/60 blur-[1px] rounded-full" />
           </div>

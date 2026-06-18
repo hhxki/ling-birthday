@@ -33,7 +33,7 @@ Set `VITE_USE_CDN` in `.env`:
 - `false`: assets load from `public/test-assets/` — used for local development with placeholder images
 - `true`: assets load from `https://ling-birthday.oss-cn-chengdu.aliyuncs.com`
 
-The `.env` currently has `VITE_USE_CDN=true`. There is no `.env.production` file.
+Both `.env` and `.env.production` currently have `VITE_USE_CDN=true`. Since there is no local test asset directory, development effectively uses CDN resources.
 
 Always use the `asset(path)` helper from `src/data/config.ts` (or `CRITICAL_ASSETS`) rather than hardcoding asset URLs. The function strips `/assets/` prefix and maps to the correct base path per environment. Note: `bgmAsset()` is functionally identical to `asset()` — they can be unified.
 
@@ -87,9 +87,15 @@ Scenes use callback properties (`onIgnited`, `onParticleCollected`, `onAllCollec
 
 ### Audio
 
-`src/composables/useAudio.ts` — Howler.js wrapper. BGM uses `html5: true` for streaming. Voice files are loaded lazily per-card, not cached. `AUDIO_CONFIG.duckBgmVolume` defines the BGM volume level when voice/video is actively playing (BGM is lowered but not stopped).
+`src/composables/useAudio.ts` — Howler.js wrapper. BGM uses `html5: true` for streaming. Voice files are loaded lazily per-card, not cached. Video files use native `<video>` elements (not Howler).
 
-**BGM autoplay workaround** (`App.vue`): browsers block autoplay of audio before user interaction. `App.vue` binds `tryStartBGM()` to `document.addEventListener('pointerdown', …, { once: true })` (and a `click` fallback) — BGM starts on the first pointer interaction anywhere on the page.
+**Audio config** (`AUDIO_CONFIG` in `src/data/config.ts`): `bgmVolume` (0.02), `duckBgmVolume` (0.008 — BGM level when voice/video is playing), `sfxVolume` (0.5), `voiceVolume` (0.7), `muted` (global mute flag for debugging).
+
+**BGM autoplay + SFX queuing** (`App.vue` + `useAudio.ts`): browsers block autoplay of audio before user interaction. The system uses a three-event strategy:
+1. `pointerdown` → tries `playBGM()` (works on desktop, rejected on mobile)
+2. `touchend` → retries (the only reliably-allowed timing on mobile)
+3. `click` → fallback
+4. SFX calls before BGM is truly playing are queued in `pendingSFX[]`. Once `playBGM()` succeeds, `flushPendingSFX()` replays all queued SFX — ensuring the match-strike sound still plays on mobile where BGM starts later.
 
 **Mute toggle**: a fixed mute button (top-right, `z-[150]`) in `App.vue` toggles `Howler.volume(0)` / `Howler.volume(1)`. The mute icon URLs are hardcoded external links from `webstatic.mihoyo.com` — they are **not** managed via the CDN asset system.
 
@@ -109,13 +115,19 @@ Scenes use callback properties (`onIgnited`, `onParticleCollected`, `onAllCollec
 
 **Blessing fields**: `id` (unique key, e.g. `'wish_001'` — used for dedup in `shownBlessings`), `user` (display name), `text`, `avatarUrl?`, `audioUrl?`, `videoUrl?`. All asset URLs (avatar, audio, video) must use the `asset()` helper from `config.ts` for CDN/local switching. **Heads-up**: `FireflyState.blessingFrom` stores `Blessing.id`, not `Blessing.user` — despite its name, it is an ID that gets resolved via `blessingsData.find(b => b.id === blessingFrom)` in the Vue component.
 
+**GreetingCard** (`src/components/GreetingCard.vue`): handles both audio and video blessings. When a blessing has `videoUrl`, a "播放视频" button appears alongside the audio button. Video opens in a fullscreen overlay with a `<video>` element; closing it restores BGM volume. The card uses responsive scaling based on viewport width (design width 780px as reference), with mobile-specific nudging to keep it visible.
+
 ### Key configuration
 
 All tunable constants are in `src/data/config.ts`:
-- `MATCH_CONFIG` — matchbox position, match offset, ignition speed/distance thresholds
+- `MATCH_CONFIG` — matchbox position, match offset, ignition speed/distance thresholds (desktop, ≥768px)
+- `MOBILE_MATCH_CONFIG` — same fields, independent values tuned for mobile (<768px)
+- `getMatchConfig()` — returns the appropriate config set based on `isMobile()` (window width check)
+- `MOBILE_BREAKPOINT` — 768px, the threshold between desktop and mobile configs
 - `PARTICLE_CONFIG` — firefly count, sizes, float amplitude, collect target position
 - `CARD_CONFIG` — greeting card image dimensions and slice points for the 3-panel border-image layout
 - `BLOW_CONFIG` — mic dB threshold, sustain duration, mic timeout for fallback button
+- `AUDIO_CONFIG` — BGM/SFX/voice volumes, ducking level, global mute flag
 
 ## Current implementation status
 
